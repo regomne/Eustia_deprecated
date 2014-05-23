@@ -3,11 +3,11 @@
 
 class Communication
 {
+    static const int BuffSize = 0x1000;
 protected:
-	HANDLE hServerReady;
-    HANDLE hClientReady;
-    HANDLE hMemoryMap;
-    BYTE*  pSharedMemory;
+    HANDLE hPipe_;
+
+
 public:
 	Communication(){}
 	int Init(int);

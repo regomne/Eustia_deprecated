@@ -1,14 +1,12 @@
 #pragma once
 
 #include <Windows.h>
+#include "..\gs\ToolFun.h"
 
 #define MYFAILED(x) ((x)!=0)
 #define MYSUCCESS(x) ((x)==0)
 
-//#define PIPE_NAME (L"\\\\.\\pipe\\regomneController%08x")
-#define SHARED_MEMORY_NAME (L"Global\\ControllerMemory%d")
-#define CLIENT_EVENT_NAME (L"Global\\ControllerClientEvent%d")
-#define SERVER_EVENT_NAME (L"Global\\ControllerServerEvent%d")
+#define PIPE_NAME (L"\\\\.\\pipe\\ControllerPipe%d")
 
 
 enum class InstructionType

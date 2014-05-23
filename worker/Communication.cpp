@@ -5,20 +5,24 @@ Communication Communicator;
 
 int Communication::Init(int __)
 {
-	wchar_t pipeName[50];
-	wsprintf(pipeName,PIPE_NAME,GetCurrentProcessId());
-
-	pipe_ = CreateFile(pipeName, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, 0, 0);
-	if (pipe_ == INVALID_HANDLE_VALUE)
-	{
-		return -1;
-	}
-	DWORD dwMode = PIPE_READMODE_BYTE;
-	if (!SetNamedPipeHandleState(pipe_, &dwMode, NULL, NULL))
-	{
-		CloseHandle(pipe_);
-		return -1;
-	}
+    wchar_t someName[50];
+    wsprintf(someName, PIPE_NAME, GetCurrentProcessId());
+    hPipe_ = CreateNamedPipe(
+        someName,
+        PIPE_ACCESS_DUPLEX,       // read/write access 
+        PIPE_TYPE_MESSAGE |       // message type pipe 
+        PIPE_READMODE_MESSAGE |   // message-read mode 
+        PIPE_WAIT,                // blocking mode 
+        PIPE_UNLIMITED_INSTANCES, // max. instances  
+        BuffSize,                  // output buffer size 
+        BuffSize,                  // input buffer size 
+        0,                        // client time-out 
+        NULL);
+    if (hPipe_ == INVALID_HANDLE_VALUE)
+    {
+        DBGOUT(("Create pipe failed. error code: %d", GetLastError()));
+        return -1;
+    }
 
 	return 0;
 }
