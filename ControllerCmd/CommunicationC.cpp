@@ -30,17 +30,17 @@ int Communication::Init2()
 	if (!fConnected)
 	{
 		return -1;
-	}
-	return 0;*/
+	}*/
+	return 0;
 }
 
 int Communication::Read(void* buff, int size, DWORD* readBytes)
 {
-
+    return 0;
 }
                 
 int Communication::Write(void* buff, int size, DWORD* writtenBytes)
 {
-	int ret = WriteFile(pipe_, buff, size, writtenBytes, 0);
-	return !ret;
+	//int ret = WriteFile(pipe_, buff, size, writtenBytes, 0);
+	return 0;
 }

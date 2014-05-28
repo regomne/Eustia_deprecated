@@ -9,8 +9,11 @@
 #include "patcher.h"
 #include "../gs/ToolFun.h"
 #include "jsInterfaces.h"
+#include "resource.h"
 
 using namespace v8;
+
+HINSTANCE g_hModule;
 
 ConcurrentQueue<InstructionPack> SendingQueue;
 
@@ -207,28 +210,72 @@ DWORD WINAPI SendingProc(LPARAM param)
 
 }
 
+LRESULT WINAPI WndProc(
+    _In_  HWND hwnd,
+    _In_  UINT uMsg,
+    _In_  WPARAM wParam,
+    _In_  LPARAM lParam
+    )
+{
+    switch (uMsg)
+    {
+    case WM_COMMAND:
+        break;
+    case WM_INITDIALOG:
+
+        break;
+    case WM_CLOSE:
+        FreeLibraryAndExitThread(g_hModule, 0);
+        EndDialog(hwnd, 0);
+        break;
+    default:
+        break;
+    }
+    return FALSE;
+}
+
+int WINAPI WindowThread(LPARAM)
+{
+    DialogBoxParam(g_hModule, (LPCWSTR)IDD_CONSOLE, NULL, (DLGPROC)WndProc, 0);
+    return 0;
+}
+
 int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
 {
+    g_hModule = (HINSTANCE)hDllHandle;
+    DisableThreadLibraryCalls((HMODULE)hDllHandle);
+
     if (dwReason == DLL_PROCESS_ATTACH)
     {
-        DBGOUT(("Entering dllmain"));
-        BYTE* buff = (BYTE*)VirtualAlloc(0, 1000, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-        HookSrcObject src;
-        HookStubObject stub;
+        //DBGOUT(("Entering dllmain"));
+        //BYTE* buff = (BYTE*)VirtualAlloc(0, 1000, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        //HookSrcObject src;
+        //HookStubObject stub;
 
 
-        auto hm = LoadLibrary(L"kernel32.dll");
-        auto func = GetProcAddress(hm, "CreateProcessInternalW");
-        if (!InitializeHookSrcObject(&src, func) ||
-            !InitializeStubObject(&stub, buff, 100, 48, STUB_DIRECTLYRETURN | STUB_OVERRIDEEAX) ||
-            !Hook32(&src, 0, &stub, MyCreateProcessW, "f123456789ABC"))
-        {
-            MessageBox(0, L"无法hook函数4", 0, 0);
-            return FALSE;
-        }
+        //auto hm = LoadLibrary(L"kernel32.dll");
+        //auto func = GetProcAddress(hm, "CreateProcessInternalW");
+        //if (!InitializeHookSrcObject(&src, func) ||
+        //    !InitializeStubObject(&stub, buff, 100, 48, STUB_DIRECTLYRETURN | STUB_OVERRIDEEAX) ||
+        //    !Hook32(&src, 0, &stub, MyCreateProcessW, "f123456789ABC"))
+        //{
+        //    MessageBox(0, L"无法hook函数4", 0, 0);
+        //    return FALSE;
+        //}
 
-        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WaitingProc, 0, 0, 0);
-        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)SendingProc, 0, 0, 0);
+        //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WaitingProc, 0, 0, 0);
+        //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)SendingProc, 0, 0, 0);
     }
     return TRUE;
+}
+
+int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
+{
+    DBGOUT(("proc entered."));
+    //if (code>=0 && wParam == VK_F12)
+    //{
+    //    CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, 0);
+    //    return TRUE;
+    //}
+    return CallNextHookEx(NULL, code, wParam, lParam);
 }

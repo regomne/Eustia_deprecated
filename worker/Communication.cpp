@@ -29,17 +29,18 @@ int Communication::Init(int __)
 
 int Communication::Read(void* buff, int size, DWORD* readBytes)
 {
-	int ret = ReadFile(pipe_, buff, size, readBytes, 0);
+	//int ret = ReadFile(pipe_, buff, size, readBytes, 0);
 	//if (ret == 0)
 	//{
 	//	wchar_t temp[20];
 	//	wsprintf(temp, L"%d", GetLastError());
 	//	MessageBox(0, temp, 0, 0);
 	//}
-	return !ret;
+	return 0;
 }
 
 int Communication::Write(void* buff, int size, DWORD* writtenBytes)
 {
-	return !WriteFile(pipe_, buff, size, writtenBytes, 0);
+	//return !WriteFile(pipe_, buff, size, writtenBytes, 0);
+    return 0;
 }

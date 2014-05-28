@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Controller", "Controller\Co
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ControllerCmd", "ControllerCmd\ControllerCmd.vcxproj", "{80A4653D-7359-40AF-BDF2-86B8FE0DB796}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Injecter", "Injecter\Injecter.vcxproj", "{9E0B6B48-4C76-4606-9973-2B0393B87C83}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -27,6 +29,10 @@ Global
 		{80A4653D-7359-40AF-BDF2-86B8FE0DB796}.Debug|Win32.Build.0 = Debug|Win32
 		{80A4653D-7359-40AF-BDF2-86B8FE0DB796}.Release|Win32.ActiveCfg = Release|Win32
 		{80A4653D-7359-40AF-BDF2-86B8FE0DB796}.Release|Win32.Build.0 = Release|Win32
+		{9E0B6B48-4C76-4606-9973-2B0393B87C83}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9E0B6B48-4C76-4606-9973-2B0393B87C83}.Debug|Win32.Build.0 = Debug|Win32
+		{9E0B6B48-4C76-4606-9973-2B0393B87C83}.Release|Win32.ActiveCfg = Release|Win32
+		{9E0B6B48-4C76-4606-9973-2B0393B87C83}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
