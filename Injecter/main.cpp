@@ -3,7 +3,10 @@
 #include <windows.h>
 #include "../worker/common.h"
 
-int main()
+HANDLE hSuccess;
+HHOOK hHook;
+
+int WINAPI HookThread(LPARAM _)
 {
     auto mod = LoadLibrary(DLL_NAME);
     if (!mod)
@@ -19,16 +22,47 @@ int main()
         return 0;
     }
 
-    auto hook = SetWindowsHookEx(WH_KEYBOARD, (HOOKPROC)func, mod, 0);
-    if (!hook)
+    hHook = SetWindowsHookEx(WH_KEYBOARD, (HOOKPROC)func, mod, 0);
+    if (!hHook)
     {
         wprintf(L"Can't set windows hook!\n");
+        return 0;
+    }
+
+    SetEvent(hSuccess);
+
+    MSG message;
+    while (GetMessage(&message, NULL, 0, 0) != 0) 
+    {
+        TranslateMessage(&message);
+        DispatchMessage(&message);
+    }
+    return 0;
+}
+
+int main()
+{
+    
+    hSuccess = CreateEvent(0, FALSE, FALSE, 0);
+
+    DWORD thId;
+    auto hth = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)HookThread, 0, 0, &thId);
+    if (hth == NULL)
+    {
+        wprintf(L"Can't create working thread!\n");
+        return 0;
+    }
+    
+    if (WaitForSingleObject(hSuccess, 1000) != WAIT_OBJECT_0)
+    {
+        wprintf(L"Some error occured.\n");
         return 0;
     }
 
     wprintf(L"Hook installed.\nPress any key to exit...");
     _getch();
 
-    UnhookWindowsHookEx(hook);
+    UnhookWindowsHookEx(hHook);
+    //PostThreadMessage(thId, WM_QUIT, 0, 0);
     return 0;
 }

@@ -1,5 +1,7 @@
 #include <windows.h>
 #include <v8.h>
+#include <Commctrl.h>
+#include <memory>
 
 #include "ilhook.h"
 #include "common.h"
@@ -10,12 +12,16 @@
 #include "../gs/ToolFun.h"
 #include "jsInterfaces.h"
 #include "resource.h"
+#include "dialog.h"
+
 
 using namespace v8;
+using namespace std;
 
 HINSTANCE g_hModule;
 
 ConcurrentQueue<InstructionPack> SendingQueue;
+ConcurrentQueue<shared_ptr<wchar_t>> CommandQueue;
 
 typedef BOOL(WINAPI *CreateProcessWRoutine)(
     HANDLE hToken,
@@ -185,58 +191,39 @@ DWORD WINAPI WaitingProc(LPARAM param)
 
 DWORD WINAPI SendingProc(LPARAM param)
 {
-    InstructionPack instpack;
-    //Sleep(10000);
-    //__asm int 3
-    while (true)
-    {
-        if (SendingQueue.Dequeue(&instpack))
-        {
-            DBGOUT(("A Sending request."));
-            DWORD temp;
-            Communicator.Write(&instpack.hdr, sizeof(InstructionHeader), &temp);
-            if (instpack.hdr.instLen != 0)
-            {
-                Communicator.Write(instpack.inst, instpack.hdr.instLen, &temp);
-                delete[] instpack.inst;
-            }
-            DBGOUT(("Sent"));
-        }
-        else
-        {
-            Sleep(1);
-        }
-    }
+    //InstructionPack instpack;
+    ////Sleep(10000);
+    ////__asm int 3
+    //while (true)
+    //{
+    //    if (SendingQueue.Dequeue(&instpack))
+    //    {
+    //        DBGOUT(("A Sending request."));
+    //        DWORD temp;
+    //        Communicator.Write(&instpack.hdr, sizeof(InstructionHeader), &temp);
+    //        if (instpack.hdr.instLen != 0)
+    //        {
+    //            Communicator.Write(instpack.inst, instpack.hdr.instLen, &temp);
+    //            delete[] instpack.inst;
+    //        }
+    //        DBGOUT(("Sent"));
+    //    }
+    //    else
+    //    {
+    //        Sleep(1);
+    //    }
+    //}
 
 }
 
-LRESULT WINAPI WndProc(
-    _In_  HWND hwnd,
-    _In_  UINT uMsg,
-    _In_  WPARAM wParam,
-    _In_  LPARAM lParam
-    )
-{
-    switch (uMsg)
-    {
-    case WM_COMMAND:
-        break;
-    case WM_INITDIALOG:
 
-        break;
-    case WM_CLOSE:
-        FreeLibraryAndExitThread(g_hModule, 0);
-        EndDialog(hwnd, 0);
-        break;
-    default:
-        break;
-    }
-    return FALSE;
-}
 
 int WINAPI WindowThread(LPARAM)
 {
-    DialogBoxParam(g_hModule, (LPCWSTR)IDD_CONSOLE, NULL, (DLGPROC)WndProc, 0);
+    /*INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_PROGRESS_CLASS };
+    InitCommonControlsEx(&icc);*/
+    InitCommonControls();
+    auto ret=DialogBoxParam(g_hModule, (LPCWSTR)IDD_CONSOLE, NULL, (DLGPROC)WndProc, 0);
     return 0;
 }
 
@@ -271,11 +258,12 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
 
 int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
 {
-    DBGOUT(("proc entered."));
-    //if (code>=0 && wParam == VK_F12)
-    //{
-    //    CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, 0);
-    //    return TRUE;
-    //}
+    static bool installed=false;
+    if (!installed && code>=0 && wParam == VK_F12)
+    {
+        installed = true;;
+        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, 0);
+        return TRUE;
+    }
     return CallNextHookEx(NULL, code, wParam, lParam);
 }

@@ -9,7 +9,7 @@ private:
 	struct Node;
 	struct Pointer
 	{
-		volatile Node* ptr1;
+		Node* ptr1;
 		volatile u32 cnt;
 		bool operator==(Pointer& p2)
 		{

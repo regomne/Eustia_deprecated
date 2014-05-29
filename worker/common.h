@@ -8,7 +8,7 @@
 
 #define PIPE_NAME (L"\\\\.\\pipe\\ControllerPipe%d")
 
-#define DLL_NAME L"worker.dll"
+#define DLL_NAME L"wnmkey.dll"
 
 
 enum class InstructionType
