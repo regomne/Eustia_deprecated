@@ -62,7 +62,7 @@ BOOL SuspendAllThreadExpectSelf(vector<int>& theadIdStack)
 
 BOOL ResumeAllThread(vector<int>& threadIdStack)
 {
-    for (int i = 0; i < threadIdStack.size(); i++)
+    for (DWORD i = 0; i < threadIdStack.size(); i++)
     {
         auto ht = OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadIdStack[i]);
         if (ht == NULL)

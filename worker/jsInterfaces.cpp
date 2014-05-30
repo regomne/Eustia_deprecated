@@ -30,7 +30,7 @@ void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
         return;
     }
 
-    for (int i = 0; i < blocks.size(); i++)
+    for (DWORD i = 0; i < blocks.size(); i++)
     {
         auto obj = Object::New(isolate);
         obj->Set(String::NewFromUtf8(isolate, "baseAddress"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].BaseAddress));
@@ -41,10 +41,11 @@ void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
 
         array->Set(i, obj);
     }
+    
     args.GetReturnValue().Set(array);
 }
 // Reads a file into a v8 string.
-v8::Handle<v8::String> ReadFile(v8::Isolate* isolate, const wchar_t* name) {
+v8::Handle<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name) {
     FILE* file = _wfopen(name, L"rb");
     if (file == NULL) return v8::Handle<v8::String>();
 
@@ -52,15 +53,28 @@ v8::Handle<v8::String> ReadFile(v8::Isolate* isolate, const wchar_t* name) {
     int size = ftell(file);
     rewind(file);
 
-    char* chars = new char[size + 1];
+    char* chars = new char[size + 2];
     chars[size] = '\0';
+    chars[size+1] = '\0';
     for (int i = 0; i < size;) {
         int read = static_cast<int>(fread(&chars[i], 1, size - i, file));
         i += read;
     }
     fclose(file);
-    v8::Handle<v8::String> result =
-        v8::String::NewFromUtf8(isolate, chars, v8::String::kNormalString, size);
+
+    v8::Handle<v8::String> result;
+    if (size >= 3 && !memcmp(chars, "\xef\xbb\xbf", 3))
+    {
+        result=v8::String::NewFromUtf8(isolate, chars+3, v8::String::kNormalString, size-3);
+    }
+    else if (size >= 2 && !memcmp(chars, "\xff\xfe", 2))
+    {
+        result = v8::String::NewFromTwoByte(isolate, (uint16_t*)(chars + 2), v8::String::kNormalString, size/2 - 1);
+    }
+    else
+    {
+        result = v8::String::NewFromUtf8(isolate, chars, v8::String::kNormalString, size);
+    }
     delete[] chars;
     return result;
 }
@@ -73,13 +87,13 @@ void Print(const v8::FunctionCallbackInfo<v8::Value>& args) {
             first = false;
         }
         else {
-            OutputInfo(L" ");
+            OutputWriter::OutputInfo(L" ");
         }
         v8::String::Value str(args[i]);
         auto cstr = ToWString(str);
-        OutputInfo(L"%s", cstr);
+        OutputWriter::OutputInfo(L"%s", cstr);
     }
-    OutputInfo(L"\n");
+    OutputWriter::OutputInfo(L"\n");
 }
 // The callback that is invoked by v8 whenever the JavaScript 'read'
 // function is called.  This function loads the content of the file named in
@@ -96,7 +110,7 @@ void Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
             v8::String::NewFromUtf8(args.GetIsolate(), "Error loading filename"));
         return;
     }
-    v8::Handle<v8::String> source = ReadFile(args.GetIsolate(), (wchar_t*)*file);
+    v8::Handle<v8::String> source = ReadJSFile(args.GetIsolate(), (wchar_t*)*file);
     if (source.IsEmpty()) {
         args.GetIsolate()->ThrowException(
             v8::String::NewFromUtf8(args.GetIsolate(), "Error loading file"));
@@ -118,7 +132,7 @@ void Load(const v8::FunctionCallbackInfo<v8::Value>& args) {
                 v8::String::NewFromUtf8(args.GetIsolate(), "Error loading filename"));
             return;
         }
-        v8::Handle<v8::String> source = ReadFile(args.GetIsolate(), (wchar_t*)*file);
+        v8::Handle<v8::String> source = ReadJSFile(args.GetIsolate(), (wchar_t*)*file);
         if (source.IsEmpty()) {
             args.GetIsolate()->ThrowException(
                 v8::String::NewFromUtf8(args.GetIsolate(), "Error loading file"));
@@ -160,32 +174,32 @@ void ReportException(v8::Isolate* isolate, v8::TryCatch* try_catch) {
     if (message.IsEmpty()) {
         // V8 didn't provide any extra information about this error; just
         // print the exception.
-        OutputInfo(L"%s\n", exception_string);
+        OutputWriter::OutputInfo(L"%s\n", exception_string);
     }
     else {
         // Print (filename):(line number): (message).
         v8::String::Value filename(message->GetScriptResourceName());
         auto filename_string = ToWString(filename);
         int linenum = message->GetLineNumber();
-        OutputInfo(L"%s:%i: %s\n", filename_string, linenum, exception_string);
+        OutputWriter::OutputInfo(L"%s:%i: %s\n", filename_string, linenum, exception_string);
         // Print line of source code.
         v8::String::Value sourceline(message->GetSourceLine());
         auto sourceline_string = ToWString(sourceline);
-        OutputInfo(L"%s\n", sourceline_string);
+        OutputWriter::OutputInfo(L"%s\n", sourceline_string);
         // Print wavy underline (GetUnderline is deprecated).
         int start = message->GetStartColumn();
         for (int i = 0; i < start; i++) {
-            OutputInfo(L" ");
+            OutputWriter::OutputInfo(L" ");
         }
         int end = message->GetEndColumn();
         for (int i = start; i < end; i++) {
-            OutputInfo(L"^");
+            OutputWriter::OutputInfo(L"^");
         }
-        OutputInfo(L"\n");
+        OutputWriter::OutputInfo(L"\n");
         v8::String::Value stack_trace(try_catch->StackTrace());
         if (stack_trace.length() > 0) {
             auto stack_trace_string = ToWString(stack_trace);
-            OutputInfo(L"%s\n", stack_trace_string);
+            OutputWriter::OutputInfo(L"%s\n", stack_trace_string);
         }
     }
 }
@@ -222,7 +236,7 @@ bool ExecuteString(v8::Isolate* isolate,
                 // the returned value.
                 v8::String::Value str(result);
                 auto cstr = ToWString(str);
-                OutputInfo(L"%s\n", cstr);
+                OutputWriter::OutputInfo(L"%s\n", cstr);
             }
             return true;
         }

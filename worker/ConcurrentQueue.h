@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _CONCURRENT_QUEUE_H_
+#define _CONCURRENT_QUEUE_H_
 
 typedef unsigned int u32;
 
@@ -9,9 +10,9 @@ private:
 	struct Node;
 	struct Pointer
 	{
-		Node* ptr1;
+		volatile Node* ptr1;
 		volatile u32 cnt;
-		bool operator==(Pointer& p2)
+		bool operator==(volatile Pointer& p2)
 		{
 			return this->ptr1==p2.ptr1 && this->cnt==p2.cnt;
 		}
@@ -28,8 +29,8 @@ private:
 		T data;
 	};
 
-	Pointer head_;
-	Pointer tail_;
+	volatile Pointer head_;
+	volatile Pointer tail_;
 
 	static inline bool CompareAndExchange(volatile Pointer* toXch,volatile Node* ptr11,
 		u32 cnt1,volatile Node* ptr12,u32 cnt2)
@@ -59,6 +60,15 @@ public:
 		head_.cnt=tail_.cnt=n->next.cnt=0;
 	}
 
+    ~ConcurrentQueue()
+    {
+        T temp;
+        while(Dequeue(temp))
+            ;
+        if(head_.ptr1)
+            delete head_.ptr1;
+    }
+
 	void Enqueue(T& data)
 	{
 		Node* node=new Node();
@@ -86,7 +96,7 @@ public:
 		CompareAndExchange(&tail_,t.ptr1,t.cnt,node,t.cnt+1);
 	}
 
-	bool Dequeue(T* data)
+	bool Dequeue(T& data)
 	{
 		Pointer h,t,n;
 		while(true)
@@ -104,7 +114,7 @@ public:
 				}
 				else
 				{
-					*data=n.ptr1->data;
+					data=*(T*)&n.ptr1->data;
 					if(CompareAndExchange(&head_,h.ptr1,h.cnt,n.ptr1,h.cnt+1))
 						break;
 				}
@@ -114,3 +124,5 @@ public:
 		return true;
 	}
 };
+
+#endif

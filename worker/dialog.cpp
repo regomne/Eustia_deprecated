@@ -9,16 +9,13 @@
 #include "jsInterfaces.h"
 #include "worker.h"
 #include <vector>
+#include "misc.h"
+#include "common.h"
 
 using namespace v8;
 using namespace std;
 
-void OutputInfo(shared_ptr<wchar_t> info)
-{
-    int ndx = GetWindowTextLength(g_hOutputEdit);
-    SendMessage(g_hOutputEdit, EM_SETSEL, ndx, ndx);
-    SendMessage(g_hOutputEdit, EM_REPLACESEL, 0, (LPARAM)info.get());
-}
+static const bool g_DisplayRslt=false;
 
 struct CommandBuffer
 {
@@ -27,21 +24,9 @@ struct CommandBuffer
 };
 
 static CommandBuffer g_CmdBuffer;
+bool OutputWriter::isNotDisplay = false;
 
-void OutputInfo(wchar_t *format, ...)
-{
-    if (!format)
-        return;
-
-    shared_ptr<wchar_t> msg(new wchar_t[0x1000], [](wchar_t*p){delete[] p; });
-
-    va_list ap;
-    va_start(ap, format);
-    _vsnwprintf(msg.get(), 4096 - 1, format, ap);
-    va_end(ap);
-
-    OutputInfo(msg);
-}
+HANDLE g_cmdComplete;
 
 DWORD WINAPI CommandProc(LPARAM param)
 {
@@ -53,14 +38,30 @@ DWORD WINAPI CommandProc(LPARAM param)
     auto context = InitV8();
     context->Enter();
 
+    {
+        auto moduleFileName = GetFullModuleFileName(GetModuleHandle(DLL_NAME));
+        auto it = moduleFileName.rfind(L'\\');
+        if (it != wstring::npos)
+        {
+            auto initJsFileName = moduleFileName.substr(0, it+1) + L"init.js";
+            auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
+            auto source = ReadJSFile(isolate, initJsFileName.c_str());
+            if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
+            {
+                OutputWriter::OutputInfo(L"%s loaded\n", initJsFileName.c_str());
+            }
+        }
+    }
+
     shared_ptr<wchar_t> cmd;
     while (true)
     {
-        if (CommandQueue.Dequeue(&cmd))
+        if (CommandQueue.Dequeue(cmd))
         {
             auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd.get());
-            ExecuteString(isolate, source, String::NewFromUtf8(isolate, "console"), true, true);
-            OutputInfo(L"\n");
+            ExecuteString(isolate, source, String::NewFromUtf8(isolate, "console"), g_DisplayRslt, true);
+            OutputWriter::OutputInfo(L"\n");
+            SetEvent(g_cmdComplete);
         }
         else
         {
@@ -73,6 +74,24 @@ DWORD WINAPI CommandProc(LPARAM param)
     return 0;
 }
 
+DWORD WINAPI UIProc(LPARAM lParam)
+{
+    auto hDialog = (HWND)lParam;
+    auto hCheck1 = GetDlgItem(hDialog, IDC_CHECKMEM1);
+    auto hCheck2 = GetDlgItem(hDialog, IDC_CHECKMEM2);
+
+    while (true)
+    {
+        auto rslt = WaitForSingleObject(g_cmdComplete, -1);
+        if (rslt == WAIT_OBJECT_0)
+        {
+            EnableWindow(hCheck1, TRUE);
+            EnableWindow(hCheck2, TRUE);
+            //OutputWriter::ChangeDisplay(true);
+        }
+    }
+}
+
 HWND g_hOutputEdit;
 LRESULT WINAPI WndProc(
     _In_  HWND hwnd,
@@ -83,16 +102,40 @@ LRESULT WINAPI WndProc(
 {
     static HWND hInputEdit;
     static HANDLE commandThread;
+    static HWND hCheck1;
+    static HWND hCheck2;
 
     int textLen;
+
+#define DEF_CONST_SHARE_STRING(name, str) shared_ptr<wchar_t> name(new wchar_t[wcslen(str)+1]);wcscpy(name .get(),str);
 
     switch (uMsg)
     {
     case WM_COMMAND:
         switch (wParam & 0xffff)
         {
-        case IDC_INPUT:
-            //OutputInfo(L"%x,%x\n", wParam >> 16, lParam);
+        case IDC_CHECKMEM1:
+        {
+                              DEF_CONST_SHARE_STRING(cmd, L"mm1=getMemoryBlocks()");
+                              OutputWriter::OutputInfo(L"Working...\n");
+                              EnableWindow(hCheck1, FALSE);
+                              EnableWindow(hCheck2, FALSE);
+                              //OutputWriter::ChangeDisplay(false);
+                              CommandQueue.Enqueue(cmd);
+        }
+            break;
+        case IDC_CHECKMEM2:
+        {
+                              DEF_CONST_SHARE_STRING(cmd, L"mm2=getMemoryBlocks();rslt=getNewExecuteMemory(mm1,mm2);");
+                              OutputWriter::OutputInfo(L"Working...\n");
+                              EnableWindow(hCheck1, FALSE);
+                              EnableWindow(hCheck2, FALSE);
+                              //OutputWriter::ChangeDisplay(false);
+                              CommandQueue.Enqueue(cmd);
+
+                              DEF_CONST_SHARE_STRING(cmd2, L"displayObject(rslt)");
+                              CommandQueue.Enqueue(cmd2);
+        }
             break;
         case IDOK:
         {
@@ -102,13 +145,13 @@ LRESULT WINAPI WndProc(
 
                      shared_ptr<wchar_t> text(new wchar_t[textLen + 1], [](wchar_t* p){delete[] p; });
                      GetWindowText(hInputEdit, text.get(), textLen + 1);
-                     OutputInfo(L"> ");
-                     OutputInfo(text);
-                     OutputInfo(L"\n");
+                     OutputWriter::OutputInfo(L"> ");
+                     OutputWriter::OutputInfo(text);
+                     OutputWriter::OutputInfo(L"\n");
                      CommandQueue.Enqueue(text);
                      SetWindowText(hInputEdit, L"");
-                     break;
         }
+            break;
         default:
             break;
         }
@@ -116,7 +159,11 @@ LRESULT WINAPI WndProc(
     case WM_INITDIALOG:
         g_hOutputEdit = GetDlgItem(hwnd, IDC_OUTPUT);
         hInputEdit = GetDlgItem(hwnd, IDC_INPUT);
+        hCheck1 = GetDlgItem(hwnd, IDC_CHECKMEM1);
+        hCheck2 = GetDlgItem(hwnd, IDC_CHECKMEM2);
+        g_cmdComplete = CreateEvent(0, FALSE, FALSE, 0);
         commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, 0);
+        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, (LPVOID)hwnd, 0, 0);
         if (!commandThread)
         {
             MessageBox(hwnd, L"Can't create command thread!", 0, 0);

@@ -117,7 +117,7 @@ DWORD WINAPI WaitingProc(LPARAM param)
 
     while (true)
     {
-        DWORD readBytes, writtenBytes;
+        DWORD readBytes;
         InstructionHeader instHdr;
         BYTE* inst;
         rslt = Communicator.Read(&instHdr, sizeof(instHdr), &readBytes);
@@ -223,7 +223,7 @@ int WINAPI WindowThread(LPARAM)
     /*INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_PROGRESS_CLASS };
     InitCommonControlsEx(&icc);*/
     InitCommonControls();
-    auto ret=DialogBoxParam(g_hModule, (LPCWSTR)IDD_CONSOLE, NULL, (DLGPROC)WndProc, 0);
+    auto ret=DialogBoxParam(g_hModule, (LPCWSTR)IDD_CMPEXE, NULL, (DLGPROC)WndProc, 0);
     return 0;
 }
 
