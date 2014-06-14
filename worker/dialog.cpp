@@ -39,7 +39,7 @@ DWORD WINAPI CommandProc(LPARAM param)
     context->Enter();
 
     {
-        auto moduleFileName = GetFullModuleFileName(GetModuleHandle(DLL_NAME));
+        auto moduleFileName = GetFullModuleFileName(g_hModule);
         auto it = moduleFileName.rfind(L'\\');
         if (it != wstring::npos)
         {
