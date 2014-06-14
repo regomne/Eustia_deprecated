@@ -2,8 +2,16 @@
 
 #include <windows.h>
 #include <memory>
+#include <vector>
 
 extern HWND g_hOutputEdit;
+
+struct CommandBuffer
+{
+    std::vector<std::wstring> buffer;
+    int curIdx;
+};
+
 
 
 LRESULT WINAPI WndProc(
