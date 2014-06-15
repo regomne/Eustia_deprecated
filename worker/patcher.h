@@ -4,3 +4,4 @@
 
 BOOL SuspendAllThreadExpectSelf(std::vector<int>& theadIdStack);
 BOOL ResumeAllThread(std::vector<int>& threadIdStack);
+BOOL CheckInfoHook(PVOID srcAddress);

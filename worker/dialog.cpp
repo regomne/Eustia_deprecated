@@ -24,7 +24,8 @@ map<HWND,CommandBuffer*> g_BufferSelector;
 
 bool OutputWriter::isNotDisplay = false;
 
-HANDLE g_cmdComplete;
+ConcurrentQueue<JSCommand> CommandQueue;
+
 HWND g_hDlgMain;
 static WNDPROC g_OldEditProc;
 
@@ -63,15 +64,16 @@ DWORD WINAPI CommandProc(LPARAM param)
         }
     }
 
-    shared_ptr<wchar_t> cmd;
+    JSCommand cmd;
     while (true)
     {
         if (CommandQueue.Dequeue(cmd))
         {
-            auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd.get());
+            auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd.text.get());
             ExecuteString(isolate, source, String::NewFromUtf8(isolate, "console"), g_DisplayRslt, true);
             OutputWriter::OutputInfo(L"\n");
-            SetEvent(g_cmdComplete);
+            if(cmd.compFlag)
+                SetEvent(cmd.compFlag);
         }
         else
         {
@@ -111,24 +113,6 @@ DWORD WINAPI NewEditProc(
     return CallWindowProc(g_OldEditProc,hwnd,uMsg,wParam,lParam);
 }
 
-DWORD WINAPI UIProc(LPARAM lParam)
-{
-    auto hDialog = (HWND)lParam;
-    auto hCheck1 = GetDlgItem(hDialog, IDC_CHECKMEM1);
-    auto hCheck2 = GetDlgItem(hDialog, IDC_CHECKMEM2);
-
-    while (true)
-    {
-        auto rslt = WaitForSingleObject(g_cmdComplete, -1);
-        if (rslt == WAIT_OBJECT_0)
-        {
-            EnableWindow(hCheck1, TRUE);
-            EnableWindow(hCheck2, TRUE);
-            //OutputWriter::ChangeDisplay(true);
-        }
-    }
-}
-
 bool AddParseString(shared_ptr<wchar_t>& text)
 {
     wstring cmd=text.get();
@@ -157,39 +141,40 @@ void ReadCmdAndExecute(HWND hEdit)
             return;
 
         //textLen+20 for ParseShortCmd(...);
-        shared_ptr<wchar_t> text(new wchar_t[textLen + 20], [](wchar_t* p){delete[] p; });
-        GetWindowText(hEdit, text.get(), textLen + 1);
+        JSCommand cmd={
+            shared_ptr<wchar_t>(new wchar_t[textLen + 20], [](wchar_t* p){delete[] p; }),
+            0
+        };
+        GetWindowText(hEdit, cmd.text.get(), textLen + 1);
 
         if(isShortCmd)
         {
             OutputWriter::OutputInfo(L"$ ");
-            OutputWriter::OutputInfo(text);
+            OutputWriter::OutputInfo(cmd.text);
             OutputWriter::OutputInfo(L"\n");
             auto buffer=itr->second;
-            buffer->buffer.push_back(text.get());
-            if(buffer->curIdx==buffer->buffer.size()-1)
-                buffer->curIdx++;
+            buffer->buffer.push_back(cmd.text.get());
+            buffer->curIdx=buffer->buffer.size();
 
-            if(!AddParseString(text))
+            if(!AddParseString(cmd.text))
             {
                 OutputWriter::OutputInfo(L"invalid short cmd\n");
                 SetWindowText(hEdit, L"");
                 return;
             }
 
-            CommandQueue.Enqueue(text);
+            CommandQueue.Enqueue(cmd);
         }
         else
         {
             OutputWriter::OutputInfo(L"> ");
-            OutputWriter::OutputInfo(text);
+            OutputWriter::OutputInfo(cmd.text);
             OutputWriter::OutputInfo(L"\n");
             auto buffer=itr->second;
-            buffer->buffer.push_back(text.get());
-            if(buffer->curIdx==buffer->buffer.size()-2)
-                buffer->curIdx++;
+            buffer->buffer.push_back(cmd.text.get());
+            buffer->curIdx=buffer->buffer.size();
 
-            CommandQueue.Enqueue(text);
+            CommandQueue.Enqueue(cmd);
        }
 
 
@@ -255,7 +240,6 @@ LRESULT WINAPI WndProc(
         hInputShortEdit=GetDlgItem(hwnd,IDC_INPUTCMD);
         hCheck1 = GetDlgItem(hwnd, IDC_CHECKMEM1);
         hCheck2 = GetDlgItem(hwnd, IDC_CHECKMEM2);
-        g_cmdComplete = CreateEvent(0, FALSE, FALSE, 0);
 
         g_BufferSelector[hInputEdit]=&g_CmdBuffer;
         g_BufferSelector[hInputShortEdit]=&g_ShortCmdBuffer;
@@ -264,7 +248,7 @@ LRESULT WINAPI WndProc(
         SetWindowLongPtr(hInputShortEdit,GWL_WNDPROC,(LONG)NewEditProc);
 
         commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, 0);
-        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, (LPVOID)hwnd, 0, 0);
+        //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, (LPVOID)hwnd, 0, 0);
         if (!commandThread)
         {
             MessageBox(hwnd, L"Can't create command thread!", 0, 0);

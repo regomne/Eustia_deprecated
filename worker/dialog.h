@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <memory>
 #include <vector>
+#include "ConcurrentQueue.h"
 
 extern HWND g_hOutputEdit;
 
@@ -12,7 +13,12 @@ struct CommandBuffer
     int curIdx;
 };
 
-
+struct JSCommand
+{
+    std::shared_ptr<wchar_t> text;
+    HANDLE compFlag;
+};
+extern ConcurrentQueue<JSCommand> CommandQueue;
 
 LRESULT WINAPI WndProc(
     _In_  HWND hwnd,

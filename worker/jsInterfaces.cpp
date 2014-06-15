@@ -4,6 +4,7 @@
 #include <memory>
 #include "Memory.h"
 #include "jsInterfaces.h"
+#include "patcher.h"
 
 using namespace v8;
 using namespace std;
@@ -18,7 +19,7 @@ const wchar_t* ToWString(const v8::String::Value& value)
     return s ? s : L"<string conversion failed>";
 }
 
-void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
+static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     auto isolate = args.GetIsolate();
     HandleScope handleScope(isolate);
@@ -44,6 +45,53 @@ void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
     
     args.GetReturnValue().Set(array);
 }
+
+static void Mread(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    if(args.Length()!=2 || !args[0]->IsUint32() || !args[1]->IsUint32())
+    {
+        args.GetIsolate()->ThrowException(
+            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        return;
+    }
+
+    auto start=args[0]->Uint32Value();
+    auto len=args[1]->Uint32Value();
+    Local<String> str;
+    __try
+    {
+        str=String::NewFromOneByte(args.GetIsolate(),(uint8_t*)start,String::kNormalString,len);
+        args.GetReturnValue().Set(str);
+    }
+    __except(GetExceptionCode()==EXCEPTION_ACCESS_VIOLATION?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH)
+    {
+        args.GetIsolate()->ThrowException(
+            v8::String::NewFromUtf8(args.GetIsolate(), "Mem access violation!"));
+    }
+    return;
+}
+
+static void CheckInfoHook(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    if(args.Length()!=1 || !args[0]->IsUint32())
+    {
+        args.GetIsolate()->ThrowException(
+            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        return;
+    }
+
+    auto addr=args[0]->Uint32Value();
+    if(!CheckInfoHook((PVOID)addr))
+    {
+        args.GetReturnValue().Set(false);
+    }
+    else
+    {
+        args.GetReturnValue().Set(true);
+    }
+    return;
+}
+
 // Reads a file into a v8 string.
 v8::Handle<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name) {
     FILE* file = _wfopen(name, L"rb");
@@ -79,7 +127,7 @@ v8::Handle<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name) {
     return result;
 }
 
-void Print(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void Print(const v8::FunctionCallbackInfo<v8::Value>& args) {
     bool first = true;
     for (int i = 0; i < args.Length(); i++) {
         v8::HandleScope handle_scope(args.GetIsolate());
@@ -98,7 +146,7 @@ void Print(const v8::FunctionCallbackInfo<v8::Value>& args) {
 // The callback that is invoked by v8 whenever the JavaScript 'read'
 // function is called.  This function loads the content of the file named in
 // the argument into a JavaScript string.
-void Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
     if (args.Length() != 1) {
         args.GetIsolate()->ThrowException(
             v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
@@ -123,7 +171,7 @@ void Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
 // The callback that is invoked by v8 whenever the JavaScript 'load'
 // function is called.  Loads, compiles and executes its argument
 // JavaScript file.
-void Load(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void Load(const v8::FunctionCallbackInfo<v8::Value>& args) {
     for (int i = 0; i < args.Length(); i++) {
         v8::HandleScope handle_scope(args.GetIsolate());
         v8::String::Value file(args[i]);
@@ -157,10 +205,13 @@ Handle<Context> InitV8()
 
     Handle<ObjectTemplate> global = ObjectTemplate::New(isolate);
 
-    global->Set(v8::String::NewFromUtf8(isolate, "getMemoryBlocks"),v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
     global->Set(v8::String::NewFromUtf8(isolate, "print"), v8::FunctionTemplate::New(isolate, Print));
     global->Set(v8::String::NewFromUtf8(isolate, "load"), v8::FunctionTemplate::New(isolate, Load));
     global->Set(v8::String::NewFromUtf8(isolate, "read"), v8::FunctionTemplate::New(isolate, Read));
+
+    global->Set(v8::String::NewFromUtf8(isolate, "_Mread"), v8::FunctionTemplate::New(isolate, Mread));
+    global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"),v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
+    global->Set(v8::String::NewFromUtf8(isolate, "_CheckInfoHook"), v8::FunctionTemplate::New(isolate, CheckInfoHook));
 
     return Context::New(isolate, NULL, global);
 

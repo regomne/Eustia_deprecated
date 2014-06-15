@@ -19,9 +19,9 @@ using namespace v8;
 using namespace std;
 
 HINSTANCE g_hModule;
+DWORD g_CompFlagIndex;
 
 ConcurrentQueue<InstructionPack> SendingQueue;
-ConcurrentQueue<shared_ptr<wchar_t>> CommandQueue;
 
 typedef BOOL(WINAPI *CreateProcessWRoutine)(
     HANDLE hToken,
@@ -230,10 +230,12 @@ int WINAPI WindowThread(LPARAM)
 int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
 {
     g_hModule = (HINSTANCE)hDllHandle;
-    DisableThreadLibraryCalls((HMODULE)hDllHandle);
+    HANDLE val;
+    //DisableThreadLibraryCalls((HMODULE)hDllHandle);
 
-    if (dwReason == DLL_PROCESS_ATTACH)
+    switch(dwReason)
     {
+    case DLL_PROCESS_ATTACH:
         //DBGOUT(("Entering dllmain"));
         //BYTE* buff = (BYTE*)VirtualAlloc(0, 1000, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
         //HookSrcObject src;
@@ -252,7 +254,36 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
 
         //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WaitingProc, 0, 0, 0);
         //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)SendingProc, 0, 0, 0);
+        g_CompFlagIndex=TlsAlloc();
+        if(g_CompFlagIndex==TLS_OUT_OF_INDEXES)
+        {
+            DBGOUT(("tls alloc faild, error: %d",GetLastError()));
+            return FALSE;
+        }
+
+        // fall through        
+    case DLL_THREAD_ATTACH:
+        val=TlsGetValue(g_CompFlagIndex);
+        if(val==0)
+        {
+            val=CreateEvent(0,0,FALSE,0);
+            //DBGOUT(("thread entered. tid:%d, eve: %x",GetCurrentThreadId(),val));
+            TlsSetValue(g_CompFlagIndex,val);
+        }
+        break;
+    case DLL_THREAD_DETACH:
+        val=TlsGetValue(g_CompFlagIndex);
+        if(val)
+        {
+            //DBGOUT(("thread exit. tid:%d",GetCurrentThreadId()));
+            CloseHandle(val);
+        }
+        break;
+    case DLL_PROCESS_DETACH:
+        TlsFree(g_CompFlagIndex);
+        break;
     }
+    
     return TRUE;
 }
 
