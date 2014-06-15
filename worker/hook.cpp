@@ -281,6 +281,7 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
         break;
     case DLL_PROCESS_DETACH:
         TlsFree(g_CompFlagIndex);
+        RemoveAllHooks();
         break;
     }
     

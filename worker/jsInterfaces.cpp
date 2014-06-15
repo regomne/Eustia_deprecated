@@ -92,6 +92,20 @@ static void CheckInfoHook(const v8::FunctionCallbackInfo<v8::Value>& args)
     return;
 }
 
+static void Unhook(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    if(args.Length()!=1 || !args[0]->IsUint32())
+    {
+        args.GetIsolate()->ThrowException(
+            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        return;
+    }
+
+    auto addr=args[0]->Uint32Value();
+    RemoveHook((PVOID)addr);
+}
+
+
 // Reads a file into a v8 string.
 v8::Handle<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name) {
     FILE* file = _wfopen(name, L"rb");
@@ -212,6 +226,7 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_Mread"), v8::FunctionTemplate::New(isolate, Mread));
     global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"),v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
     global->Set(v8::String::NewFromUtf8(isolate, "_CheckInfoHook"), v8::FunctionTemplate::New(isolate, CheckInfoHook));
+    global->Set(v8::String::NewFromUtf8(isolate, "_Unhook"), v8::FunctionTemplate::New(isolate, Unhook));
 
     return Context::New(isolate, NULL, global);
 

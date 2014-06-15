@@ -128,3 +128,25 @@ BOOL CheckInfoHook(PVOID srcAddress)
 
     return TRUE;
 }
+
+void RemoveHook(PVOID srcAddress)
+{
+    g_HookList.remove_if([&](HookSrcObject& src)
+    {
+        if(src.addr==srcAddress)
+        {
+            UnHook32(&src);
+            return true;
+        }
+        return false;
+    });
+}
+
+void RemoveAllHooks()
+{
+    g_HookList.remove_if([](HookSrcObject& src)
+    {
+        UnHook32(&src);
+        return true;
+    });
+}
