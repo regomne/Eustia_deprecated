@@ -25,7 +25,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -44,8 +44,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>E:\Program\beaengine\headers;E:\Program\v8\include;$(IncludePath)</IncludePath>
-    <LibraryPath>E:\Program\beaengine\beaengine\Release;E:\Program\v8\build\Release\lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>E:\Program\beaengine\sources\include;E:\Program\v8\include;$(IncludePath)</IncludePath>
+    <LibraryPath>E:\Program\beaengine\Release;E:\Program\v8\build\Release\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
