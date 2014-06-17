@@ -92,6 +92,16 @@ void HOOKFUNC MyGetInfo(Registers* regs,PVOID srcAddr)
 
     swprintf_s(cmd.text.get(),100,L"Hooker.dispatchCheckFunction(%d,%d);",regs,srcAddr);
     auto compFlag=(HANDLE)TlsGetValue(g_CompFlagIndex);
+    if (GetLastError() != ERROR_SUCCESS)
+    {
+        DBGOUT(("can't retrieve the tls value!"));
+        return;
+    }
+    if (compFlag == 0)
+    {
+        compFlag = CreateEvent(0, 0, 0, 0);
+        TlsSetValue(g_CompFlagIndex, compFlag);
+    }
     cmd.compFlag=compFlag;
 
     CommandQueue.Enqueue(cmd);

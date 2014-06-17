@@ -1,10 +1,124 @@
 ﻿var Global={};
 var LogLevel=7;
 
-function hookFunc1(regs)
+function apHash(str)
 {
-	print('eax: '+regs.eax);
+    var dwHash = 0;    
+    
+    for (var dwIndex = 0; dwIndex < str.length; dwIndex++)
+    {
+		var c=str.charCodeAt(dwIndex);
+        dwHash ^= ( ((dwIndex & 1) == 0) ? 
+            ((dwHash <<  7) ^ (c) ^ (dwHash >>> 3)) : 
+        (~((dwHash << 11) ^ (c) ^ (dwHash >>> 5))) );
+    }
+    
+    dwHash = (dwHash & 0x7fffffff);
+    return dwHash;
 	
+}
+
+function getNewExecuteMemory(blocks1,blocks2)
+{
+	function getExecute(blocks)
+	{
+		var exes=[];
+		
+		var PAGE_EXECUTE_READ=0x20;
+		var PAGE_EXECUTE_READWRITE=0x40;
+		
+		for(var i=0;i<blocks.length;i++)
+		{
+			if((blocks[i].protect&(PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE))!=0)
+			{
+				exes.push(blocks[i]);
+			}
+		}
+		return exes;
+	}
+	
+	var exe1=getExecute(blocks1);
+	print('之前的可执行内存数量: ',exe1.length);
+	var exe2=getExecute(blocks2);
+	print('之后的可执行内存数量: ',exe2.length);
+	
+	var newExes=[];
+	var newChanges=[];
+	
+	var j=0;
+	for(var i=0;i<exe1.length;i++)
+	{
+		(function(addr,size)
+		{
+			for(;j<exe2.length;j++)
+			{
+				if(exe2[j].baseAddress<addr)
+				{
+					newExes.push(exe2[j]);
+					j++;
+				}
+				else if(exe2[j].baseAddress==addr)
+				{
+					if(exe2[j].regionSize!=size)
+					{
+						newChanges.push(exe2[j]);
+					}
+					j++;
+					break;
+				}
+				else
+					break;
+			}
+		})(exe1[i].baseAddress,exe1[i].regionSize);
+	}
+	while(j<exe2.length)
+	{
+		newExes.push(exe2[j++]);
+	}
+	
+	return {newExes:newExes,newChanges:newChanges};
+}
+
+function calcExeMemHash(mm1)
+{
+	for(var i=0;i<mm1.length;i++)
+	{
+		mm1[i].hash=apHash(mread(mm1[i].baseAddress,0x1000));
+	}
+}
+
+String.prototype.repeat=function(n)
+{
+	var a=[];
+	while(a.length<n)
+	{
+		a.push(this);
+	}
+	return a.join('');
+};
+function displayObject(obj)
+{
+	function display_(obj,level)
+	{
+		var indentStr='\t'.repeat(level);
+		var s=indentStr+'{\r\n';
+		indentStr=indentStr+'\t';
+		for(var prop in obj)
+		{
+			s+=indentStr+prop+': ';
+			var val=obj[prop];
+			if(typeof(val)!='object')
+				s+=val.toString()+',\r\n';
+			else
+			{
+				s+='\r\n';
+				s+=display_(val,level+1)+',\r\n';
+			}
+		}
+		s+=indentStr.slice(0,-1)+'}';
+		return s;
+	}
+	print(display_(obj,0));
 }
 
 var Convert={
@@ -40,8 +154,8 @@ var Convert={
 	},
 	parseTbl:
 	{
-		'I':{func:Convert.toU32, cnt:4},
-		'H':{func:Convert.toU16, cnt:2},
+		'I':{func:function(){return Convert.toU32}, cnt:4},
+		'H':{func:function(){return Convert.toU16}, cnt:2},
 	},
 	unpack: function(s,pat)
 	{
@@ -54,9 +168,9 @@ var Convert={
 			pat=pat.slice(1);
 		}
 		var i=0;
-		for(var c in pat)
+		for(var c=0;c<pat.length;c++)
 		{
-			var cvtf=this.parseTbl[pat[c]];
+			var cvtf=Convert.parseTbl[pat[c]];
 			if(cvtf==undefined)
 			{
 				throw 'unknown escape character!';
@@ -64,7 +178,7 @@ var Convert={
 			
 			if(i+cvtf.cnt>s.length)
 				throw 'str too short!';
-			retArr.push(cvtf.func(s,i,be));
+			retArr.push(cvtf.func()(s,i,be));
 			i+=cvtf.cnt;
 		}
 		return retArr;
@@ -85,6 +199,12 @@ var Hooker={
 	{
 		this.dispatchDict[addr]=hookfunc;
 		return _CheckInfoHook(addr);
+	},
+	unHook:function(addr)
+	{
+		_Unhook(addr);
+		if(this.dispatchDict[addr]!=undefined)
+			delete this.dispatchDict[addr];
 	},
 	parseRegs:function(regStrtPtr)
 	{
