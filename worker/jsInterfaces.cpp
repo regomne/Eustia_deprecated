@@ -5,6 +5,7 @@
 #include "Memory.h"
 #include "jsInterfaces.h"
 #include "patcher.h"
+#include "misc.h"
 
 using namespace v8;
 using namespace std;
@@ -44,6 +45,61 @@ static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
     
     args.GetReturnValue().Set(array);
+}
+
+static void GetAPI(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+
+    HandleScope handleScope(isolate);
+
+    if (args.Length() != 1)
+    {
+        args.GetIsolate()->ThrowException(
+            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        return;
+    }
+
+    String::Value str(args[0]);
+    auto pstr = (wchar_t *)*str;
+    auto p = wcschr(pstr, L'.');
+    PVOID addr;
+    if (!p)
+    {
+        auto len = wcslen(pstr);
+        shared_ptr<char> cs(new char[(len + 1) * 2], CharDeleter);
+        WideCharToMultiByte(CP_ACP, 0, pstr, -1, cs.get(), (len + 1) * 2, 0, 0);
+
+        auto rslt=GetAPI(0, cs.get(), &addr);
+        if (!rslt)
+        {
+            args.GetIsolate()->ThrowException(
+                v8::String::NewFromUtf8(args.GetIsolate(), "Can't find this api!"));
+            return;
+        }
+    }
+    else
+    {
+        auto len = wcslen(p + 1);
+        shared_ptr<char> funcName(new char[(len + 1) * 2], CharDeleter);
+        WideCharToMultiByte(CP_ACP, 0, p+1, -1, funcName.get(), (len + 1) * 2, 0, 0);
+        funcName.get()[len] = '\0';
+
+        len = p - pstr;
+        shared_ptr<wchar_t> modName(new wchar_t[len + 1], WcharDeleter);
+        memcpy(modName.get(), pstr, len * 2);
+        modName.get()[len] = L'\0';
+
+        auto rslt = GetAPI(modName.get(), funcName.get(), &addr);
+        if (!rslt)
+        {
+            args.GetIsolate()->ThrowException(
+                v8::String::NewFromUtf8(args.GetIsolate(), "Can't find this api!"));
+            return;
+        }
+    }
+
+    args.GetReturnValue().Set(Integer::NewFromUnsigned(isolate, (uint32_t)addr));
 }
 
 static void Mread(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -227,6 +283,7 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"),v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
     global->Set(v8::String::NewFromUtf8(isolate, "_CheckInfoHook"), v8::FunctionTemplate::New(isolate, CheckInfoHook));
     global->Set(v8::String::NewFromUtf8(isolate, "_Unhook"), v8::FunctionTemplate::New(isolate, Unhook));
+    global->Set(v8::String::NewFromUtf8(isolate, "_GetAPI"), v8::FunctionTemplate::New(isolate, GetAPI));
 
     return Context::New(isolate, NULL, global);
 

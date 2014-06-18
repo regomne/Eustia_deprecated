@@ -17,6 +17,41 @@ function apHash(str)
     return dwHash;
 	
 }
+function calcExeMemHash(address)
+{
+	function u32(addr)
+	{
+		return Convert.toU32(_Mread(addr,4));
+	}
+	function u16(addr)
+	{
+		return Convert.toU16(_Mread(addr,2));
+	}
+	function calcExeModule(addr)
+	{
+		var sig=_Mread(addr,2);
+		if(sig!='MZ')
+		{
+		print('not mz');
+			return -1;
+		}
+		addr=addr+u32(addr+0x3c);
+		sig=_Mread(addr,2);
+		if(sig!='PE')
+		{
+		print('not pe');
+			return -1;
+		}
+		
+		var size=24+u16(addr+0x14);
+		return apHash(_Mread(addr,size));
+	}
+	
+	var h=calcExeModule(address);
+	if(h>0)
+		return h;
+	return apHash(_Mread(address,0x1000));
+}
 
 function getNewExecuteMemory(blocks1,blocks2)
 {
@@ -76,15 +111,8 @@ function getNewExecuteMemory(blocks1,blocks2)
 		newExes.push(exe2[j++]);
 	}
 	
+	newExes.map(function(mm){mm.hash=calcExeMemHash(mm.baseAddress)});
 	return {newExes:newExes,newChanges:newChanges};
-}
-
-function calcExeMemHash(mm1)
-{
-	for(var i=0;i<mm1.length;i++)
-	{
-		mm1[i].hash=apHash(mread(mm1[i].baseAddress,0x1000));
-	}
 }
 
 String.prototype.repeat=function(n)

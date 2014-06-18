@@ -19,3 +19,14 @@ std::wstring GetFullModuleFileName(HMODULE hm)
     delete[] dllPath;
     return str;
 }
+
+
+void WcharDeleter(wchar_t* p)
+{
+    delete[] p;
+}
+
+void CharDeleter(char* p)
+{
+    delete[] p;
+}

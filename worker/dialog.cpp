@@ -71,7 +71,7 @@ DWORD WINAPI CommandProc(LPARAM param)
         {
             auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd.text.get());
             ExecuteString(isolate, source, String::NewFromUtf8(isolate, "console"), g_DisplayRslt, true);
-            OutputWriter::OutputInfo(L"\n");
+            //OutputWriter::OutputInfo(L"\n");
             if(cmd.compFlag)
                 SetEvent(cmd.compFlag);
         }

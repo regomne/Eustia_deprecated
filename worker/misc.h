@@ -5,3 +5,6 @@
 #include <windows.h>
 
 std::wstring GetFullModuleFileName(HMODULE mod);
+
+void WcharDeleter(wchar_t* p);
+void CharDeleter(char* p);

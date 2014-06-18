@@ -27,3 +27,35 @@ BOOL GetMemoryBlocks(std::vector<MEMORY_BASIC_INFORMATION>& blocks)
     }
     return TRUE;
 }
+
+BOOL GetAPI(wchar_t* moduleName, char* funcName, PVOID* addr)
+{
+        DBGOUTL((L"mod: %s", moduleName));
+        DBGOUT(("func: %s", funcName));
+    if (moduleName)
+    {
+        auto mod = GetModuleHandle(moduleName);
+        if (!mod)
+            return FALSE;
+
+        *addr = GetProcAddress(mod, funcName);
+        if (!*addr)
+        {
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    wchar_t* mods[] = { L"ntdll.dll", L"kernel32.dll", L"kernelbase.dll",L"user32.dll" };
+    for (int i = 0; i < sizeof(mods) / sizeof(wchar_t*); i++)
+    {
+        auto mod = GetModuleHandle(mods[i]);
+        if (mod)
+        {
+            *addr = GetProcAddress(mod, funcName);
+            if (*addr)
+                return TRUE;
+        }
+    }
+    return FALSE;
+}
