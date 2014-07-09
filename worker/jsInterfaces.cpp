@@ -47,7 +47,30 @@ static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
     args.GetReturnValue().Set(array);
 }
 
-static void GetAPI(const v8::FunctionCallbackInfo<v8::Value>& args)
+static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    HandleScope handleScope(isolate);
+
+    if (args.Length() < 2)
+    {
+        args.GetIsolate()->ThrowException(
+            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        return;
+    }
+
+    auto funcAddr = args[0]->Uint32Value();
+    MEMORY_BASIC_INFORMATION mbi;
+    auto rslt = VirtualQuery((LPVOID)funcAddr, &mbi, 1);
+    if (!rslt || !(mbi.Protect&(PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)))
+    {
+        args.GetIsolate()->ThrowException(
+            v8::String::NewFromUtf8(isolate, "Address not accessible or execuatble."));
+        return;
+    }
+}
+
+static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     auto isolate = args.GetIsolate();
 
@@ -70,7 +93,7 @@ static void GetAPI(const v8::FunctionCallbackInfo<v8::Value>& args)
         shared_ptr<char> cs(new char[(len + 1) * 2], CharDeleter);
         WideCharToMultiByte(CP_ACP, 0, pstr, -1, cs.get(), (len + 1) * 2, 0, 0);
 
-        auto rslt=GetAPI(0, cs.get(), &addr);
+        auto rslt=GetAPIAddress(0, cs.get(), &addr);
         if (!rslt)
         {
             args.GetIsolate()->ThrowException(
@@ -90,7 +113,7 @@ static void GetAPI(const v8::FunctionCallbackInfo<v8::Value>& args)
         memcpy(modName.get(), pstr, len * 2);
         modName.get()[len] = L'\0';
 
-        auto rslt = GetAPI(modName.get(), funcName.get(), &addr);
+        auto rslt = GetAPIAddress(modName.get(), funcName.get(), &addr);
         if (!rslt)
         {
             args.GetIsolate()->ThrowException(
@@ -283,7 +306,7 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"),v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
     global->Set(v8::String::NewFromUtf8(isolate, "_CheckInfoHook"), v8::FunctionTemplate::New(isolate, CheckInfoHook));
     global->Set(v8::String::NewFromUtf8(isolate, "_Unhook"), v8::FunctionTemplate::New(isolate, Unhook));
-    global->Set(v8::String::NewFromUtf8(isolate, "_GetAPI"), v8::FunctionTemplate::New(isolate, GetAPI));
+    global->Set(v8::String::NewFromUtf8(isolate, "_GetAPIAddress"), v8::FunctionTemplate::New(isolate, GetAPIAddress));
 
     return Context::New(isolate, NULL, global);
 

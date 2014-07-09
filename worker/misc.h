@@ -3,6 +3,16 @@
 #include <memory>
 #include <string>
 #include <windows.h>
+#include <vector>
+#include <ilhook.h>
+
+enum class FunctionCallType
+{
+    Cdecl,
+    Stdcall,
+    Classcall,
+    Othercall,
+};
 
 std::wstring GetFullModuleFileName(HMODULE mod);
 

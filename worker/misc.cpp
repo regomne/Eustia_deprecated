@@ -30,3 +30,13 @@ void CharDeleter(char* p)
 {
     delete[] p;
 }
+
+DWORD CallFunction(DWORD funcAddr, FunctionCallType callType, vector<DWORD> args, DWORD regFlags,Registers* regs)
+{
+    DWORD argCnt = args.size();
+    DWORD localArgs[30];
+    if (argCnt > 30)
+    {
+
+    }
+}
