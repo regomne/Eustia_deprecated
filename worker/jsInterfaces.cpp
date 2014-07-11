@@ -47,6 +47,22 @@ static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
     args.GetReturnValue().Set(array);
 }
 
+static int ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& pointers)
+{
+    if (jsVal->IsBoolean() || jsVal->IsBooleanObject())
+    {
+        *(bool*)elem = jsVal->BooleanValue();
+    }
+    else if (jsVal->IsInt32() || jsVal->IsUint32() || jsVal->IsNumber() || jsVal->IsNumberObject())
+    {
+        *(DWORD*)elem = jsVal->Uint32Value();
+    }
+    else if (jsVal->IsString() || jsVal->IsStringObject())
+    {
+
+    }
+}
+
 static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     auto isolate = args.GetIsolate();
