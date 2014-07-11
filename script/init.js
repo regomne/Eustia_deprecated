@@ -32,14 +32,12 @@ function calcExeMemHash(address)
 		var sig=_Mread(addr,2);
 		if(sig!='MZ')
 		{
-		print('not mz');
 			return -1;
 		}
 		addr=addr+u32(addr+0x3c);
 		sig=_Mread(addr,2);
 		if(sig!='PE')
 		{
-		print('not pe');
 			return -1;
 		}
 		
@@ -149,6 +147,13 @@ function displayObject(obj)
 	print(display_(obj,0));
 }
 
+function displayMemInfo(obj)
+{
+	obj.map(function(mm)
+	{
+		print('start: ',mm.baseAddress,'\t\tsize: ',mm.regionSize,'\t\thash: ',mm.hash);
+	});
+}
 var Convert={
 	toU32: function(s,off,be)
 	{
@@ -225,6 +230,7 @@ var Hooker={
 	dispatchDict:{},
 	checkInfo:function(addr,hookfunc)
 	{
+		addr=parseInt(addr);
 		this.dispatchDict[addr]=hookfunc;
 		return _CheckInfoHook(addr);
 	},

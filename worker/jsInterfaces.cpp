@@ -55,18 +55,47 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
     if (args.Length() < 2)
     {
         args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+            v8::String::NewFromUtf8(args.GetIsolate(), "At least 2 parameters"));
         return;
     }
 
     auto funcAddr = args[0]->Uint32Value();
-    MEMORY_BASIC_INFORMATION mbi;
-    auto rslt = VirtualQuery((LPVOID)funcAddr, &mbi, 1);
-    if (!rslt || !(mbi.Protect&(PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY)))
+    auto callType = args[1]->Uint32Value();
+    Registers regs;
+    DWORD regFlags=0;
+    vector<DWORD> arguments;
+    
+    if (args.Length() >= 3)
     {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(isolate, "Address not accessible or execuatble."));
-        return;
+        if (!args[2]->IsObject())
+        {
+            args.GetIsolate()->ThrowException(
+                v8::String::NewFromUtf8(args.GetIsolate(), "arg3 must be a object"));
+            return;
+        }
+        auto regsObj = args[2].As<Object>();
+        for (int i = 0; i < 8; i++)
+        {
+            if (regsObj->Has(i))
+            {
+                regFlags |= (1 << i);
+                *((DWORD*)&regs + (i + 1)) = regsObj->Get(i)->Uint32Value();
+            }
+        }
+    }
+    if (args.Length() >= 4)
+    {
+        if (!args[3]->IsArray())
+        {
+            args.GetIsolate()->ThrowException(
+                v8::String::NewFromUtf8(args.GetIsolate(), "arg4 must be an array"));
+            return;
+        }
+        auto argsArray = args[3].As<Array>();
+        for (int i = 0; i < argsArray->Length(); i++)
+        {
+
+        }
     }
 }
 
