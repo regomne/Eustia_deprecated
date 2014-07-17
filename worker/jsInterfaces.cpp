@@ -2,10 +2,12 @@
 #include <assert.h>
 #include "dialog.h"
 #include <memory>
+#include <algorithm>
 #include "Memory.h"
 #include "jsInterfaces.h"
 #include "patcher.h"
 #include "misc.h"
+#include "../gs/ToolFun.h"
 
 using namespace v8;
 using namespace std;
@@ -43,12 +45,13 @@ static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
 
         array->Set(i, obj);
     }
-    
+
     args.GetReturnValue().Set(array);
 }
 
-static int ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& pointers)
+static bool ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& pointers)
 {
+    auto rslt = true;
     if (jsVal->IsBoolean() || jsVal->IsBooleanObject())
     {
         *(bool*)elem = jsVal->BooleanValue();
@@ -59,8 +62,32 @@ static int ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& pointe
     }
     else if (jsVal->IsString() || jsVal->IsStringObject())
     {
-
+        String::Utf8Value str(jsVal);
+        auto strBuff = new char[str.length() + 1];
+        memcpy(strBuff, *str, str.length());
+        strBuff[str.length()] = 0;
+        pointers.push_back(strBuff);
+        *(char**)elem = strBuff;
     }
+    else if (jsVal->IsArray())
+    {
+        auto jsArr = jsVal.As<Array>();
+        auto arrBuff = new void*[jsArr->Length()];
+        pointers.push_back(arrBuff);
+        for (DWORD i = 0; i < jsArr->Length(); i++)
+        {
+            arrBuff[i] = 0;
+            auto cvtRslt = ConvertElement(&arrBuff[i], jsArr->Get(i), pointers);
+            if (!cvtRslt)
+                rslt = false;
+        }
+        *(void**)elem = arrBuff;
+    }
+    else
+    {
+        rslt = false;
+    }
+    return rslt;
 }
 
 static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -76,11 +103,12 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
 
     auto funcAddr = args[0]->Uint32Value();
-    auto callType = args[1]->Uint32Value();
+    auto callType = (FunctionCallType)args[1]->Uint32Value();
     Registers regs;
-    DWORD regFlags=0;
+    DWORD regFlags = 0;
     vector<DWORD> arguments;
-    
+    vector<void*> pointers;
+
     if (args.Length() >= 3)
     {
         if (!args[2]->IsObject())
@@ -108,10 +136,31 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
             return;
         }
         auto argsArray = args[3].As<Array>();
-        for (int i = 0; i < argsArray->Length(); i++)
+        for (DWORD i = 0; i < argsArray->Length(); i++)
         {
-
+            DWORD arg = 0;
+            auto cvtRslt = ConvertElement(&arg, argsArray->Get(i), pointers);
+            if (!cvtRslt)
+            {
+                DBGOUT(("arg %d cvt failed.", i));
+            }
+            arguments.push_back(arg);
         }
+    }
+    DWORD callRetVal = 0;
+    auto callRslt = CallFunction(funcAddr, callType, arguments, regFlags, &regs, &callRetVal);
+    for (int i = pointers.size() - 1; i >= 0; i--)
+    {
+        delete[](char*)pointers[i];
+    }
+    if (!callRslt)
+    {
+        args.GetIsolate()->ThrowException(
+            v8::String::NewFromUtf8(args.GetIsolate(), "exception occured."));
+    }
+    else
+    {
+        args.GetReturnValue().Set((uint32_t)callRetVal);
     }
 }
 
@@ -138,7 +187,7 @@ static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
         shared_ptr<char> cs(new char[(len + 1) * 2], CharDeleter);
         WideCharToMultiByte(CP_ACP, 0, pstr, -1, cs.get(), (len + 1) * 2, 0, 0);
 
-        auto rslt=GetAPIAddress(0, cs.get(), &addr);
+        auto rslt = GetAPIAddress(0, cs.get(), &addr);
         if (!rslt)
         {
             args.GetIsolate()->ThrowException(
@@ -150,7 +199,7 @@ static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
     {
         auto len = wcslen(p + 1);
         shared_ptr<char> funcName(new char[(len + 1) * 2], CharDeleter);
-        WideCharToMultiByte(CP_ACP, 0, p+1, -1, funcName.get(), (len + 1) * 2, 0, 0);
+        WideCharToMultiByte(CP_ACP, 0, p + 1, -1, funcName.get(), (len + 1) * 2, 0, 0);
         funcName.get()[len] = '\0';
 
         len = p - pstr;
@@ -172,22 +221,22 @@ static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 static void Mread(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    if(args.Length()!=2 || !args[0]->IsUint32() || !args[1]->IsUint32())
+    if (args.Length() != 2 || !args[0]->IsUint32() || !args[1]->IsUint32())
     {
         args.GetIsolate()->ThrowException(
             v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
         return;
     }
 
-    auto start=args[0]->Uint32Value();
-    auto len=args[1]->Uint32Value();
+    auto start = args[0]->Uint32Value();
+    auto len = args[1]->Uint32Value();
     Local<String> str;
     __try
     {
-        str=String::NewFromOneByte(args.GetIsolate(),(uint8_t*)start,String::kNormalString,len);
+        str = String::NewFromOneByte(args.GetIsolate(), (uint8_t*)start, String::kNormalString, len);
         args.GetReturnValue().Set(str);
     }
-    __except(GetExceptionCode()==EXCEPTION_ACCESS_VIOLATION?EXCEPTION_EXECUTE_HANDLER:EXCEPTION_CONTINUE_SEARCH)
+    __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
     {
         args.GetIsolate()->ThrowException(
             v8::String::NewFromUtf8(args.GetIsolate(), "Mem access violation!"));
@@ -197,15 +246,15 @@ static void Mread(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 static void CheckInfoHook(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    if(args.Length()!=1 || !args[0]->IsUint32())
+    if (args.Length() != 1 || !args[0]->IsUint32())
     {
         args.GetIsolate()->ThrowException(
             v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
         return;
     }
 
-    auto addr=args[0]->Uint32Value();
-    if(!CheckInfoHook((PVOID)addr))
+    auto addr = args[0]->Uint32Value();
+    if (!CheckInfoHook((PVOID)addr))
     {
         args.GetReturnValue().Set(false);
     }
@@ -218,14 +267,14 @@ static void CheckInfoHook(const v8::FunctionCallbackInfo<v8::Value>& args)
 
 static void Unhook(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
-    if(args.Length()!=1 || !args[0]->IsUint32())
+    if (args.Length() != 1 || !args[0]->IsUint32())
     {
         args.GetIsolate()->ThrowException(
             v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
         return;
     }
 
-    auto addr=args[0]->Uint32Value();
+    auto addr = args[0]->Uint32Value();
     RemoveHook((PVOID)addr);
 }
 
@@ -241,7 +290,7 @@ v8::Handle<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name) {
 
     char* chars = new char[size + 2];
     chars[size] = '\0';
-    chars[size+1] = '\0';
+    chars[size + 1] = '\0';
     for (int i = 0; i < size;) {
         int read = static_cast<int>(fread(&chars[i], 1, size - i, file));
         i += read;
@@ -251,11 +300,11 @@ v8::Handle<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name) {
     v8::Handle<v8::String> result;
     if (size >= 3 && !memcmp(chars, "\xef\xbb\xbf", 3))
     {
-        result=v8::String::NewFromUtf8(isolate, chars+3, v8::String::kNormalString, size-3);
+        result = v8::String::NewFromUtf8(isolate, chars + 3, v8::String::kNormalString, size - 3);
     }
     else if (size >= 2 && !memcmp(chars, "\xff\xfe", 2))
     {
-        result = v8::String::NewFromTwoByte(isolate, (uint16_t*)(chars + 2), v8::String::kNormalString, size/2 - 1);
+        result = v8::String::NewFromTwoByte(isolate, (uint16_t*)(chars + 2), v8::String::kNormalString, size / 2 - 1);
     }
     else
     {
@@ -348,10 +397,11 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "read"), v8::FunctionTemplate::New(isolate, Read));
 
     global->Set(v8::String::NewFromUtf8(isolate, "_Mread"), v8::FunctionTemplate::New(isolate, Mread));
-    global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"),v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
+    global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"), v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
     global->Set(v8::String::NewFromUtf8(isolate, "_CheckInfoHook"), v8::FunctionTemplate::New(isolate, CheckInfoHook));
     global->Set(v8::String::NewFromUtf8(isolate, "_Unhook"), v8::FunctionTemplate::New(isolate, Unhook));
     global->Set(v8::String::NewFromUtf8(isolate, "_GetAPIAddress"), v8::FunctionTemplate::New(isolate, GetAPIAddress));
+    global->Set(v8::String::NewFromUtf8(isolate, "_CallFunction"), v8::FunctionTemplate::New(isolate, CallFunction));
 
     return Context::New(isolate, NULL, global);
 

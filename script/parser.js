@@ -1,13 +1,21 @@
 function ParseShortCmd(cmd)
 {
-	if(cmd=='cmem1')
+	if(cmd=='cm1')
 	{
 		eval('mm1=_GetMemoryBlocks()');
 	}
-	else if(cmd=='cmem2')
+	else if(cmd=='cm2')
 	{
 		eval('mm2=_GetMemoryBlocks();rslt=getNewExecuteMemory(mm1,mm2)');
-		eval('displayObject(rslt)');
+		eval('displayMemInfo(rslt.newExes)');
+	}
+	else if(cmd=='lf')
+	{
+		eval('load("e:/Program/Controller2/Release/myfunc.js")');
+	}
+	else if(cmd=='lf2')
+	{
+		eval('load("e:/Program/Controller2/Release/test.js")');
 	}
 	else
 	{

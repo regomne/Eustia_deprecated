@@ -49,8 +49,8 @@ BOOL CallFunction(DWORD funcAddr, FunctionCallType callType, vector<DWORD>& args
             mov eax, argsPtr;
         _lbl1:
             push dword ptr[eax];
-            add eax, 4
-                dec ecx;
+            add eax, 4;
+            dec ecx;
             jnz _lbl1;
         _lbl2:
 

@@ -172,17 +172,19 @@ var Convert={
 				(s.charCodeAt(off+1)<<16)+(s.charCodeAt(off)*(1<<24));
 		}
 	},
-	toU16: function(s,be)
+	toU16: function(s,off,be)
 	{
+		if(off=undefined)
+			off=0;
 		if(be==undefined)
 			be=false;
 		if(!be)
 		{
-			return s.charCodeAt(0)+(s.charCodeAt(1)<<8);
+			return s.charCodeAt(off)+(s.charCodeAt(off+1)<<8);
 		}
 		else
 		{
-			return s.charCodeAt(1)+(s.charCodeAt(0)<<8);
+			return s.charCodeAt(off+1)+(s.charCodeAt(off)<<8);
 		}
 	},
 	parseTbl:
@@ -240,6 +242,14 @@ var Hooker={
 		if(this.dispatchDict[addr]!=undefined)
 			delete this.dispatchDict[addr];
 	},
+	unHookAll:function()
+	{
+		for(var addr in this.dispatchDict)
+		{
+			_Unhook(addr);
+		}
+		this.dispatchDict={};
+	},
 	parseRegs:function(regStrtPtr)
 	{
 		regStrt=_Mread(regStrtPtr,4*9);
@@ -264,3 +274,83 @@ var Hooker={
 			print('unk srcAddr in Hooker: '+srcAddr);
 	}
 };
+
+function callFunc(addr,callType,regs) //其他参数附在后面
+{
+	var rcallType=0;
+	switch(callType)
+	{
+		case 'cdecl':
+			rcallType=0;
+			break;
+		case 'stdcall':
+			rcallType=1;
+			break;
+		default:
+			print(callType);
+			throw "call type error!";
+	}
+	
+	var rregs={};
+	for(var reg in regs)
+	{
+		switch(reg)
+		{
+			case 'eax': rregs[7]=regs[reg]; break;
+			case 'ecx': rregs[6]=regs[reg]; break;
+			case 'edx': rregs[5]=regs[reg]; break;
+			case 'ebx': rregs[4]=regs[reg]; break;
+//			case 'esp': rregs[3]=regs[reg]; break;
+//			case 'ebp': rregs[2]=regs[reg]; break;
+			case 'esi': rregs[1]=regs[reg]; break;
+			case 'edi': rregs[0]=regs[reg]; break;
+		}
+	}
+	
+	var rargs=[];
+	for(var i=arguments.length-1;i>=3;i--)
+	{
+		rargs.push(arguments[i]);
+	}
+	
+	return _CallFunction(addr,rcallType,rregs,rargs);
+}
+
+function makeFunction(addr,callType)
+{
+	return function()
+	{
+		var args=[addr,callType];
+		for(var i=0;i<arguments.length;i++)
+		{
+			args.push(arguments[i]);
+		}
+		return callFunc.apply(this,args);
+	}
+}
+
+function makeFastCallFunction(addr,callType)
+{
+	return function()
+	{
+		var args=[addr,callType,{ecx:arguments[0]}];
+		for(var i=1;i<arguments.length;i++)
+		{
+			args.push(arguments[i]);
+		}
+		return callFunc.apply(this,args);
+	}
+}
+
+function makeSimpleFunction(addr,callType)
+{
+	return function()
+	{
+		var args=[addr,callType,{}];
+		for(var i=0;i<arguments.length;i++)
+		{
+			args.push(arguments[i]);
+		}
+		return callFunc.apply(this,args);
+	}
+}
