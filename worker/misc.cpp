@@ -21,6 +21,20 @@ std::wstring GetFullModuleFileName(HMODULE hm)
     return str;
 }
 
+wstring GetDllPath(HMODULE hm)
+{
+    wstring path = L"";
+    auto dllFileName = GetFullModuleFileName(hm);
+    if (dllFileName.length() != 0)
+    {
+        auto it = dllFileName.rfind(L'\\');
+        if (it != wstring::npos)
+        {
+            path = dllFileName.substr(0, it + 1);
+        }
+    }
+    return path;
+}
 
 void WcharDeleter(wchar_t* p)
 {

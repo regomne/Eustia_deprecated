@@ -27,6 +27,8 @@ enum RegisterFlag
 };
 
 std::wstring GetFullModuleFileName(HMODULE mod);
+std::wstring GetDllPath(HMODULE hm);
+
 BOOL CallFunction(DWORD funcAddr, FunctionCallType callType, std::vector<DWORD>& args, DWORD regFlags, Registers* regs, DWORD* retVal);
 
 void WcharDeleter(wchar_t* p);

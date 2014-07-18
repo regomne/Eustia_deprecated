@@ -3,28 +3,30 @@
 #include "dialog.h"
 #include <windows.h>
 #include <memory>
+#include <vector>
+#include <map>
+#include <string>
+
 #include "resource.h"
 #include "ConcurrentQueue.h"
 #include <v8.h>
 #include "jsInterfaces.h"
 #include "worker.h"
-#include <vector>
-#include <map>
 #include "misc.h"
 #include "common.h"
 
 using namespace v8;
 using namespace std;
 
-static const bool g_DisplayRslt=true;
+static const bool g_DisplayRslt=true; //是否显示每条js指令的返回值
 
-static CommandBuffer g_CmdBuffer;
-static CommandBuffer g_ShortCmdBuffer;
-map<HWND,CommandBuffer*> g_BufferSelector;
+static CommandBuffer g_CmdBuffer; //js输入缓冲
+static CommandBuffer g_ShortCmdBuffer; //短命令缓冲
+map<HWND,CommandBuffer*> g_BufferSelector; //
 
 bool OutputWriter::isNotDisplay = false;
 
-ConcurrentQueue<JSCommand> CommandQueue;
+ConcurrentQueue<JSCommand> CommandQueue; //js命令队列
 
 HWND g_hDlgMain;
 static WNDPROC g_OldEditProc;
@@ -40,11 +42,7 @@ DWORD WINAPI CommandProc(LPARAM param)
     context->Enter();
 
     {
-        auto moduleFileName = GetFullModuleFileName(g_hModule);
-        auto it = moduleFileName.rfind(L'\\');
-        if (it != wstring::npos)
-        {
-            auto initJsFileName = moduleFileName.substr(0, it+1) + L"init.js";
+            auto initJsFileName = g_dllPath + L"init.js";
             auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
             auto source = ReadJSFile(isolate, initJsFileName.c_str());
             if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
@@ -52,7 +50,7 @@ DWORD WINAPI CommandProc(LPARAM param)
                 OutputWriter::OutputInfo(L"%s loaded\n", initJsFileName.c_str());
             }
 
-            auto parserJsFileName= moduleFileName.substr(0, it+1) + L"parser.js";
+            auto parserJsFileName= g_dllPath + L"parser.js";
             name=String::NewFromTwoByte(isolate, (uint16_t*)parserJsFileName.c_str());
             source = ReadJSFile(isolate, parserJsFileName.c_str());
             if (source.IsEmpty() || !ExecuteString(isolate, source, name, false, true) ||
@@ -61,7 +59,6 @@ DWORD WINAPI CommandProc(LPARAM param)
                 OutputWriter::OutputInfo(L"parser.js faild, short cmd disabled.\n");
                 EnableWindow(GetDlgItem(g_hDlgMain,IDC_INPUTCMD),FALSE);
             }
-        }
     }
 
     JSCommand cmd;

@@ -11,11 +11,11 @@ function ParseShortCmd(cmd)
 	}
 	else if(cmd=='lf')
 	{
-		eval('load("e:/Program/Controller2/Release/myfunc.js")');
+		eval('load("g:/crack/myfunc.js")');
 	}
 	else if(cmd=='lf2')
 	{
-		eval('load("e:/Program/Controller2/Release/test.js")');
+		eval('load("g:/crack/test.js")');
 	}
 	else
 	{

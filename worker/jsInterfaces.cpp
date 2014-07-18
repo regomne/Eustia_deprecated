@@ -41,7 +41,7 @@ static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
         obj->Set(String::NewFromUtf8(isolate, "allocationBase"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].AllocationBase));
         obj->Set(String::NewFromUtf8(isolate, "regionSize"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].RegionSize));
         obj->Set(String::NewFromUtf8(isolate, "protect"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].Protect));
-        obj->Set(String::NewFromUtf8(isolate, "allocationBase"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].AllocationBase));
+ //       obj->Set(String::NewFromUtf8(isolate, "allocationBase"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].AllocationBase));
 
         array->Set(i, obj);
     }

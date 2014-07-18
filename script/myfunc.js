@@ -50,10 +50,17 @@ function unpack(s,fmt,names)
 	return rslt;
 }
 
-var excludeList=[0,1,4,0x3f,46,5,6,7,34,35,57,65,26,12,13,18,101];
+function CheckVal(regs)
+{
+	print(regs.esi,regs.edi);
+}
+function ChkVal(addr){Hooker.checkInfo(addr,function(regs){CheckVal(regs)})}
+
+//var excludeList=[0,1,4,0x3f,46,5,6,7,34,35,57,65,26,12,13,18,101];
+var excludeList=[1,4,34,63];
 function MyHook_(regs)
 {
-	var t=_Mread(regs.ecx+0x16,1).charCodeAt(0);
+	var t=u32(regs.esp+4)
 	
 	if(excludeList.indexOf(t)==-1)
 	{
@@ -76,8 +83,8 @@ function MyHook2(regs)
 {
 	subFunc(regs);
 }
-function HookRecv(){Hooker.checkInfo(0x01883a05,MyHook2)}
-function HookSend(){Hooker.checkInfo(0x0187F48C,MyHook)}
+function HookRecv(){Hooker.checkInfo(0x18821f5,MyHook2)}
+function HookSend(){Hooker.checkInfo(0x0187D140,MyHook)}
 
 
 function GetDamagedHP2(regs,val)
@@ -228,3 +235,24 @@ function CheckEffect(regs)
 	}
 }
 function HookCheckEffect(addr){Hooker.checkInfo(addr,function(regs){CheckEffect(regs)})}
+
+function getPtrByUidAndType(uid,type)
+{
+	var t=u32(0x2c82dd8+0x24);
+	t=u32(t+0x20a020);
+	t=u32(t+0x90);
+	return callFunction(0x1035180,'stdcall',{ecx:t},type,uid);
+}
+
+function CheckVectorAdd(regs)
+{
+	var mapObj=u32(u32(0x2a95fe8)+0xb8);
+	var vec=regs.ecx;
+	var newElem=u32(u32(regs.ebp+8));
+	if((vec==mapObj+0xc || vec==mapObj+0x34 || vec==mapObj+0xc0) && u32(newElem+0x94)==0xf000)
+	{
+		print('eff added');
+	}
+}
+function HookCheckVector(addr){Hooker.checkInfo(addr,function(regs){CheckVectorAdd(regs)})}
+

@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <memory>
 #include <vector>
+#include <string>
 #include "ConcurrentQueue.h"
 
 extern HWND g_hOutputEdit;

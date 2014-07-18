@@ -2,6 +2,7 @@
 #include <v8.h>
 #include <Commctrl.h>
 #include <memory>
+#include <string>
 
 #include "ilhook.h"
 #include "common.h"
@@ -13,13 +14,15 @@
 #include "jsInterfaces.h"
 #include "resource.h"
 #include "dialog.h"
-
+#include "misc.h"
 
 using namespace v8;
 using namespace std;
 
 HINSTANCE g_hModule;
 DWORD g_CompFlagIndex;
+
+wstring g_dllPath;
 
 ConcurrentQueue<InstructionPack> SendingQueue;
 
@@ -254,7 +257,13 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
 
         //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WaitingProc, 0, 0, 0);
         //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)SendingProc, 0, 0, 0);
-        g_CompFlagIndex=TlsAlloc();
+        g_dllPath = GetDllPath(g_hModule);
+        if (g_dllPath.length() == 0)
+        {
+            MessageBox(0, L"Can't get dll path", 0, 0);
+        }
+
+        g_CompFlagIndex = TlsAlloc();
         if(g_CompFlagIndex==TLS_OUT_OF_INDEXES)
         {
             DBGOUT(("tls alloc faild, error: %d",GetLastError()));

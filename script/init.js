@@ -275,7 +275,7 @@ var Hooker={
 	}
 };
 
-function callFunc(addr,callType,regs) //其他参数附在后面
+function callFunction(addr,callType,regs) //其他参数附在后面
 {
 	var rcallType=0;
 	switch(callType)
@@ -325,20 +325,20 @@ function makeFunction(addr,callType)
 		{
 			args.push(arguments[i]);
 		}
-		return callFunc.apply(this,args);
+		return callFunction.apply(this,args);
 	}
 }
 
-function makeFastCallFunction(addr,callType)
+function makeClassCallFunction(addr)
 {
 	return function()
 	{
-		var args=[addr,callType,{ecx:arguments[0]}];
+		var args=[addr,'stdcall',{ecx:arguments[0]}];
 		for(var i=1;i<arguments.length;i++)
 		{
 			args.push(arguments[i]);
 		}
-		return callFunc.apply(this,args);
+		return callFunction.apply(this,args);
 	}
 }
 
@@ -351,6 +351,6 @@ function makeSimpleFunction(addr,callType)
 		{
 			args.push(arguments[i]);
 		}
-		return callFunc.apply(this,args);
+		return callFunction.apply(this,args);
 	}
 }
