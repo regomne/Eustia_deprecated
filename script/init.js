@@ -1,5 +1,31 @@
 ﻿var Global={};
-var LogLevel=7;
+var LogLevel=5;
+
+function print()
+{
+	for(var i=0;i<arguments.length;i++)
+	{
+		var arg=arguments[i];
+		if(typeof(arg)=='number' || typeof(arg.valueOf())=='number')
+			arguments[i]=arg.toString(16);
+	}
+	return _Print.apply(this,arguments);
+}
+
+function load(fname)
+{
+	if(fname.length>2 &&
+		fname[1]!=':' &&
+		(fname[0]!='\\' && fname[0]!='/'))
+	{
+		fname=_DllPath+fname;
+	}
+	if(LogLevel>=4)
+	{
+		print(fname,'loading...');
+	}
+	return _LoadJS(fname);
+}
 
 function apHash(str)
 {
@@ -134,7 +160,9 @@ function displayObject(obj)
 			s+=indentStr+prop+': ';
 			var val=obj[prop];
 			if(typeof(val)!='object')
-				s+=val.toString()+',\r\n';
+			{
+				s+=val.toString(16)+',\r\n';
+			}
 			else
 			{
 				s+='\r\n';
@@ -174,7 +202,7 @@ var Convert={
 	},
 	toU16: function(s,off,be)
 	{
-		if(off=undefined)
+		if(off==undefined)
 			off=0;
 		if(be==undefined)
 			be=false;
@@ -270,7 +298,7 @@ var Hooker={
 	{
 		if(this.dispatchDict[srcAddr]!=undefined)
 			this.dispatchDict[srcAddr](this.parseRegs(regs));
-		else if(LogLevel>=4)
+		else if(LogLevel>=2)
 			print('unk srcAddr in Hooker: '+srcAddr);
 	}
 };

@@ -300,6 +300,7 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
 int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
 {
     static bool installed=false;
+    DBGOUT(("captured, key: %x", wParam));
     if (!installed && code>=0 && wParam == VK_F12)
     {
         installed = true;;

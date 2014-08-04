@@ -2,6 +2,8 @@ var Consts={
 	
 };
 
+load('protocols.js');
+
 function u32(addr)
 {
 	return Convert.toU32(_Mread(addr,4));
@@ -52,39 +54,47 @@ function unpack(s,fmt,names)
 
 function CheckVal(regs)
 {
-	print(regs.esi,regs.edi);
+	displayObject(regs);
+	var s='check: '+u32(regs.esp)+',';
+	var curebp=regs.ebp;
+	var i=0;
+	while(i<10)
+	{
+		var last;
+		try{last=u32(curebp+4);curebp=u32(curebp);}
+		catch(e){break;}
+		s=s+last+', ';
+		i++;
+	}
+	print(s);
 }
 function ChkVal(addr){Hooker.checkInfo(addr,function(regs){CheckVal(regs)})}
 
-//var excludeList=[0,1,4,0x3f,46,5,6,7,34,35,57,65,26,12,13,18,101];
-var excludeList=[1,4,34,63];
+var excludeList=[1,4,6,7,12,13,34,46,63,101];
+var includeList=[32];
 function MyHook_(regs)
 {
 	var t=u32(regs.esp+4)
 	
 	if(excludeList.indexOf(t)==-1)
 	{
+		if(includeList.length!=0 && includeList.indexOf(t)==-1)
+			return;
 		print('send:',t);
 	}
-}
-function MyHook(regs)
-{
-	MyHook_(regs);
 }
 function subFunc(regs)
 {
 	var t=regs.ecx;
 	if(excludeList.indexOf(t)==-1)
 	{
+		if(includeList.length!=0 && includeList.indexOf(t)==-1)
+			return;
 		print('recv:',regs.ecx);
 	}
 }
-function MyHook2(regs)
-{
-	subFunc(regs);
-}
-function HookRecv(){Hooker.checkInfo(0x18821f5,MyHook2)}
-function HookSend(){Hooker.checkInfo(0x0187D140,MyHook)}
+function HookRecv(){Hooker.checkInfo(0x18821f5,function(regs){subFunc(regs)})}
+function HookSend(){Hooker.checkInfo(0x0187D140,function(regs){MyHook_(regs)})}
 
 
 function GetDamagedHP2(regs,val)
@@ -112,7 +122,7 @@ function HookCattack(){
 
 function GetCnt(addr,regs)
 {
-	print(addr,' entered. espVal: ',u32(regs.esp),'esp+4',u32(regs.esp+4),'esp+8',u32(regs.esp+8),'last:',u32(u32(regs.ebp)+4));
+	print(addr,' entered. espVal: ',u32(regs.esp),'esp+XX',u32(regs.esp+4+0x18),'esp+4',u32(regs.esp+8),'esp+8:',u32(regs.esp+8));
 }
 //function HookDecHp(){Hooker.checkInfo(0xf1e270,function(regs){GetCnt(regs)})}
 function HookChkStack(addr)
@@ -123,19 +133,19 @@ function HookChkStack(addr)
 	});
 }
 
-function GetSetStateInfo(regs)
+function GetSetStateInfo(regs,fmt,names)
 {
-	var base=u32(0x29d6d00);
-	var t=u16(base+0x1c);
-	var id=u16(base+0x1e);
-	var st1=u8(base+0x20);
-	var st2=(u32(base+0x21))&0xffffffff;
-	if(t==0x21 && u32(regs.esi)==0x2324f6c)
+	var base=u32(0x2a12f98);
+	var t=u16(base+0x16);
+	var vals=unpack(_Mread(base+0x1c,100),fmt,names);
+	var s='';
+	for(var i=0;i<vals.length;i++)
 	{
-		print('t: ',t,' id: ',id,' st1: ',st1,' st2: ',st2);
+		s+=vals[i][0]+': '+vals[i][1]+' ';
 	}
+	print('t:',t,s);
 }
-function HookSetStateInfo(){Hooker.checkInfo(0xfc20ef,function(regs){GetSetStateInfo(regs)})}
+function Hookudp(addr,fmt,names){Hooker.checkInfo(addr,function(regs){GetSetStateInfo(regs,fmt,names)})}
 
 function GetUseSkillInfo(regs)
 {
@@ -177,9 +187,9 @@ function GetCSPkgCode(regs)
 }
 function GetCSPkgCode2(regs)
 {
-	var pkgType=u16(regs.esp+0x8);
-	var pkgBuffer=u32(regs.esp+0xc);
-	var dataSize=u16(regs.esp+0x10);
+	var pkgType=u16(regs.esp+0xc+0x8);
+	var pkgBuffer=u32(regs.esp+0xc+0xc);
+	var dataSize=u16(regs.esp+0xc+0x10);
 	print('2',pkgType);
 	
 	if(pkgType==37)
@@ -256,3 +266,68 @@ function CheckVectorAdd(regs)
 }
 function HookCheckVector(addr){Hooker.checkInfo(addr,function(regs){CheckVectorAdd(regs)})}
 
+function getMemoryBlock(mm,addr)
+{
+	var cm;
+	mm.forEach(function(m)
+	{
+		if(m.baseAddress<=addr && m.baseAddress+m.regionSize>addr)
+		{
+			cm=m;
+			return;
+		}
+	});
+	return cm;
+}
+
+function getMemoryBases(mm,addr)
+{
+	var cms=[];
+	mm.forEach(function(m)
+	{
+		if(m.allocationBase==addr)
+		{
+			cms.push(m);
+		}
+	});
+	return cms;
+}
+
+function CheckEsp(regs)
+{
+	var esp=regs.esp;
+	print('Check esp begin');
+	for(var i=0;i<100;i++)
+	{
+		var val=u32(esp);
+		if(val<0x5000000 && val>0x400000)
+		{
+			var last=0;
+			try{last=u32(u32(esp-4));}
+			catch(e){}
+			print(esp,':',val, ':',last);
+		}
+		esp+=4;
+	}
+	print('Check esp end.');
+}
+function HookCheckEsp(addr){Hooker.checkInfo(addr,function(regs){CheckEsp(regs)})}
+
+function GetItemObject()
+{
+	try
+	{
+		var vec1=u32(u32(u32(u32(0x2a986bc)+0x18)+0x344)+0x13c);
+		var start=u32(vec1+0x3c);
+		var end=u32(vec1+0x40);
+		var cnt=(end-start)/4;
+		for (var i=0;i<cnt;i++)
+		{
+			print(i,u32(start+i*4));
+		}
+	}
+	catch(e)
+	{
+		print('err');
+	}
+}

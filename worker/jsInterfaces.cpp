@@ -7,6 +7,7 @@
 #include "jsInterfaces.h"
 #include "patcher.h"
 #include "misc.h"
+#include "worker.h"
 #include "../gs/ToolFun.h"
 
 using namespace v8;
@@ -62,6 +63,8 @@ static bool ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& point
     }
     else if (jsVal->IsString() || jsVal->IsStringObject())
     {
+        auto ss = jsVal->ToString();
+        
         String::Utf8Value str(jsVal);
         auto strBuff = new char[str.length() + 1];
         memcpy(strBuff, *str, str.length());
@@ -392,9 +395,9 @@ Handle<Context> InitV8()
 
     Handle<ObjectTemplate> global = ObjectTemplate::New(isolate);
 
-    global->Set(v8::String::NewFromUtf8(isolate, "print"), v8::FunctionTemplate::New(isolate, Print));
-    global->Set(v8::String::NewFromUtf8(isolate, "load"), v8::FunctionTemplate::New(isolate, Load));
-    global->Set(v8::String::NewFromUtf8(isolate, "read"), v8::FunctionTemplate::New(isolate, Read));
+    global->Set(v8::String::NewFromUtf8(isolate, "_Print"), v8::FunctionTemplate::New(isolate, Print));
+    global->Set(v8::String::NewFromUtf8(isolate, "_LoadJS"), v8::FunctionTemplate::New(isolate, Load));
+    global->Set(v8::String::NewFromUtf8(isolate, "_ReadText"), v8::FunctionTemplate::New(isolate, Read));
 
     global->Set(v8::String::NewFromUtf8(isolate, "_Mread"), v8::FunctionTemplate::New(isolate, Mread));
     global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"), v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
@@ -402,6 +405,8 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_Unhook"), v8::FunctionTemplate::New(isolate, Unhook));
     global->Set(v8::String::NewFromUtf8(isolate, "_GetAPIAddress"), v8::FunctionTemplate::New(isolate, GetAPIAddress));
     global->Set(v8::String::NewFromUtf8(isolate, "_CallFunction"), v8::FunctionTemplate::New(isolate, CallFunction));
+
+    global->Set(v8::String::NewFromUtf8(isolate, "_DllPath"), v8::String::NewFromTwoByte(isolate, (uint16_t*)g_dllPath.c_str()));
 
     return Context::New(isolate, NULL, global);
 
