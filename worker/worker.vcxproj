@@ -96,6 +96,7 @@
     <ClCompile Include="Communication.cpp" />
     <ClCompile Include="dialog.cpp" />
     <ClCompile Include="hook.cpp" />
+    <ClCompile Include="JSFile.cpp" />
     <ClCompile Include="jsInterfaces.cpp" />
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="misc.cpp" />
@@ -109,6 +110,7 @@
     <ClInclude Include="Communication.h" />
     <ClInclude Include="ConcurrentQueue.h" />
     <ClInclude Include="dialog.h" />
+    <ClInclude Include="JSFile.h" />
     <ClInclude Include="jsInterfaces.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="misc.h" />

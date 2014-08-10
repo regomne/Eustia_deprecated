@@ -139,6 +139,15 @@ function getNewExecuteMemory(blocks1,blocks2)
 	return {newExes:newExes,newChanges:newChanges};
 }
 
+function dumpAllMem(dir)
+{
+	mm=_GetMemoryBlocks();
+	mm.forEach(function(m){
+		if(m.protect!=0 && m.protect!=1)
+			_DumpMemory(-1,m.baseAddress,m.regionSize,dir+m.baseAddress.toString(16)+'.bin');
+	});
+}
+
 String.prototype.repeat=function(n)
 {
 	var a=[];
@@ -255,6 +264,30 @@ var Convert={
 		return (s1*(1<<24))+(s2<<16)+(s3<<8)+s4;
 	}
 };
+
+function printHex(buff,size)
+{
+	var i=0;
+	while(i<buff.length && i<size)
+	{
+		s='';
+		for(var j=0;j<16;j++)
+		{
+			s+=buff.charCodeAt(i).toString(16)+' ';
+			if(j==7)
+				s+=' ';
+			i++;
+			if(i>=buff.length || i>=size)
+				break;
+		}
+		print(s);
+	}
+}
+
+function printMem(addr,size)
+{
+	printHex(_Mread(addr,size),size);
+}
 
 var Hooker={
 	dispatchDict:{},

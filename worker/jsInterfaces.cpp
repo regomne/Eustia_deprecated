@@ -13,6 +13,16 @@
 using namespace v8;
 using namespace std;
 
+#define THROW_EXCEPTION(str) isolate->ThrowException(String::NewFromTwoByte(isolate, (uint16_t*)str))
+
+#define CHECK_ARGS_COUNT(cnt) \
+if (args.Length()!=cnt)\
+{\
+    isolate->ThrowException(String::NewFromTwoByte(isolate, (uint16_t*)(L"need " L###cnt L" arguments!")));\
+    return;\
+}
+
+
 const char* ToCString(const v8::String::Utf8Value& value) {
     return *value ? *value : "<string conversion failed>";
 }
@@ -48,6 +58,23 @@ static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
 
     args.GetReturnValue().Set(array);
+}
+
+static void DumpMemory(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(4);
+
+    HANDLE processHandle = (HANDLE)args[0]->Uint32Value();
+    LPVOID startAddr = (LPVOID)args[1]->Uint32Value();
+    DWORD size = args[2]->Uint32Value();
+    String::Value fileName(args[3]);
+
+    if (!DumpMemory(processHandle, startAddr, size, (wchar_t*)*fileName))
+    {
+        THROW_EXCEPTION(L"Dump failed.");
+        return;
+    }
 }
 
 static bool ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& pointers)
@@ -401,6 +428,8 @@ Handle<Context> InitV8()
 
     global->Set(v8::String::NewFromUtf8(isolate, "_Mread"), v8::FunctionTemplate::New(isolate, Mread));
     global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"), v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
+    global->Set(v8::String::NewFromUtf8(isolate, "_DumpMemory"), v8::FunctionTemplate::New(isolate, DumpMemory));
+
     global->Set(v8::String::NewFromUtf8(isolate, "_CheckInfoHook"), v8::FunctionTemplate::New(isolate, CheckInfoHook));
     global->Set(v8::String::NewFromUtf8(isolate, "_Unhook"), v8::FunctionTemplate::New(isolate, Unhook));
     global->Set(v8::String::NewFromUtf8(isolate, "_GetAPIAddress"), v8::FunctionTemplate::New(isolate, GetAPIAddress));
