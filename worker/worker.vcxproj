@@ -101,6 +101,7 @@
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="misc.cpp" />
     <ClCompile Include="patcher.cpp" />
+    <ClCompile Include="ThreadData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\ilhook\src\ilhook.h" />
@@ -116,6 +117,7 @@
     <ClInclude Include="misc.h" />
     <ClInclude Include="patcher.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="ThreadData.h" />
     <ClInclude Include="worker.h" />
   </ItemGroup>
   <ItemGroup>

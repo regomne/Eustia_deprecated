@@ -1,12 +1,13 @@
 ﻿var Global={};
 var LogLevel=5;
+var scriptPath=[_DllPath];
 
 function print()
 {
 	for(var i=0;i<arguments.length;i++)
 	{
 		var arg=arguments[i];
-		if(typeof(arg)=='number' || typeof(arg.valueOf())=='number')
+		if(arg!=undefined && (typeof(arg)=='number' || typeof(arg.valueOf())=='number'))
 			arguments[i]=arg.toString(16);
 	}
 	return _Print.apply(this,arguments);
@@ -18,7 +19,7 @@ function load(fname)
 		fname[1]!=':' &&
 		(fname[0]!='\\' && fname[0]!='/'))
 	{
-		fname=_DllPath+fname;
+		fname=scriptPath.slice(-1)[0]+fname;
 	}
 	if(LogLevel>=4)
 	{
@@ -26,6 +27,8 @@ function load(fname)
 	}
 	return _LoadJS(fname);
 }
+
+load('stubs.js');
 
 function apHash(str)
 {
@@ -139,16 +142,25 @@ function getNewExecuteMemory(blocks1,blocks2)
 	return {newExes:newExes,newChanges:newChanges};
 }
 
-function dumpAllMem(dir)
+function dumpAllMem(handle,dir)
 {
-	mm=_GetMemoryBlocks();
+	mm=_GetMemoryBlocks(handle);
 	mm.forEach(function(m){
-		if(m.protect!=0 && m.protect!=1)
-			_DumpMemory(-1,m.baseAddress,m.regionSize,dir+m.baseAddress.toString(16)+'.bin');
+		var low=m.protect&0xff;
+		var high=m.protect&(~0xff);
+		if((low!=0 && low!=1) && (high!=0x100))
+		{
+			var ret=_DumpMemory(handle,m.baseAddress,m.regionSize,dir+'\\'+m.baseAddress.toString(16)+'.bin');
+			if(!ret)
+			{
+				print("can't read mem:",m.baseAddress,'protect:',m.protect);
+			}
+		}
 	});
+	print('dump complete.');
 }
 
-String.prototype.repeat=function(n)
+setProperty(String.prototype,'repeat',function(n)
 {
 	var a=[];
 	while(a.length<n)
@@ -156,7 +168,8 @@ String.prototype.repeat=function(n)
 		a.push(this);
 	}
 	return a.join('');
-};
+},'e');
+
 function displayObject(obj)
 {
 	function display_(obj,level)
@@ -335,47 +348,6 @@ var Hooker={
 			print('unk srcAddr in Hooker: '+srcAddr);
 	}
 };
-
-function callFunction(addr,callType,regs) //其他参数附在后面
-{
-	var rcallType=0;
-	switch(callType)
-	{
-		case 'cdecl':
-			rcallType=0;
-			break;
-		case 'stdcall':
-			rcallType=1;
-			break;
-		default:
-			print(callType);
-			throw "call type error!";
-	}
-	
-	var rregs={};
-	for(var reg in regs)
-	{
-		switch(reg)
-		{
-			case 'eax': rregs[7]=regs[reg]; break;
-			case 'ecx': rregs[6]=regs[reg]; break;
-			case 'edx': rregs[5]=regs[reg]; break;
-			case 'ebx': rregs[4]=regs[reg]; break;
-//			case 'esp': rregs[3]=regs[reg]; break;
-//			case 'ebp': rregs[2]=regs[reg]; break;
-			case 'esi': rregs[1]=regs[reg]; break;
-			case 'edi': rregs[0]=regs[reg]; break;
-		}
-	}
-	
-	var rargs=[];
-	for(var i=arguments.length-1;i>=3;i--)
-	{
-		rargs.push(arguments[i]);
-	}
-	
-	return _CallFunction(addr,rcallType,rregs,rargs);
-}
 
 function makeFunction(addr,callType)
 {

@@ -3,6 +3,7 @@ var Consts={
 };
 
 load('protocols.js');
+load('dnf_def.js');
 
 function u32(addr)
 {
@@ -52,6 +53,16 @@ function unpack(s,fmt,names)
 	return rslt;
 }
 
+function printUnpack(vals)
+{
+	var s='';
+	for(var i=0;i<vals.length;i++)
+	{
+		s+=vals[i][0]+': '+vals[i][1]+' ';
+	}
+	return s;
+}
+
 function CheckVal(regs)
 {
 	displayObject(regs);
@@ -96,6 +107,89 @@ function subFunc(regs)
 function HookRecv(){Hooker.checkInfo(0x18821f5,function(regs){subFunc(regs)})}
 function HookSend(){Hooker.checkInfo(0x0187D140,function(regs){MyHook_(regs)})}
 
+var LastTime=0;
+function myUdpSend(regs)
+{
+	function filter(pid,buff)
+	{
+		var exList=[];
+		if(exList.indexOf(pid)==-1)
+			return true;
+		return false;
+	}
+	var udpBuff=u32(UDP_PACKET_MANAGER_OBJECT)+UDP_PACKET_BUFF_OFFSET;
+	if(udpBuff<1000)
+	{
+		return;
+	}
+	
+	var type=u8(udpBuff+UDP_PACKET_FLAG_OFFSET);
+	if(type!=2)
+	{
+		return;
+	}
+	
+	var pkId=u16(udpBuff+UDP_PACKET_ID_OFFSET);
+	if(filter(pkId,udpBuff))
+	{
+		if(pkId==5)
+		{
+			if(u16(udpBuff+7)==0x111 && u8(udpBuff+0xb)==8)
+			{
+				var subId=u8(udpBuff+0x12);
+				if(LastTime==0) LastTime=(new Date()).getTime();
+				var curTime=(new Date()).getTime();
+				print('subid:',subId,'interval:',curTime-LastTime);
+				LastTime=curTime;
+			}
+		}
+	}
+}
+function hookUdpSend(){Hooker.checkInfo(0x01883fe7,function(regs){myUdpSend(regs)})}
+
+function myTcpSend(regs)
+{
+	function sendMsgFilter(pid,buff)
+	{
+		var exList=[0];
+		if(pid<0x36b && exList.indexOf(pid)==-1) return true;
+		return false;
+	}
+
+	var tcpBuff=u32(SEND_TCP_PACKET_BUFF_OFFSET);
+	if(tcpBuff==0)
+	{return;}
+	tcpBuff=tcpBuff+SEND_TCP_PACKET_REALDATA_OFFSET;
+	var pkId=u16(tcpBuff+SEND_TCP_PACKET_ID_OFFSET);
+	if(sendMsgFilter(pkId,tcpBuff))
+	{
+		print('Send id:',CmdName[pkId]);
+	}
+}
+function hookTcpSend(){Hooker.checkInfo(TCP_SENDBUFF_FUNC,function(regs){myTcpSend(regs)})}
+
+function myTcpRecv(regs)
+{
+	function recvMsgFilter(pid,buff)
+	{
+		var exList=[0,2,3];
+		if(pid<0x36b && exList.indexOf(pid)==-1) return true;
+		return false;
+	}
+	
+	var tcpBuff=u32(regs.esp+8);
+	var pkId=u16(tcpBuff+DNFEVENT_PACKET_ID_OFFSET);
+	var pkSize=u16(tcpBuff+DNFEVENT_PACKET_SIZE_OFFSET);
+	if(recvMsgFilter(pkId,tcpBuff))
+	{
+		print('Recv id:',NotiName[pkId],'size:',pkSize);
+		if(pkId==0x26)
+		{
+			printMem(tcpBuff,pkSize);
+		}
+	}
+}
+function hookTcpRecv(){Hooker.checkInfo(DBG_Hook_TcpRecv,function(regs){myTcpRecv(regs)})}
 
 function GetDamagedHP2(regs,val)
 {
@@ -123,6 +217,7 @@ function HookCattack(){
 function GetCnt(addr,regs)
 {
 	print(addr,' entered. espVal: ',u32(regs.esp),'esp+XX',u32(regs.esp+4+0x18),'esp+4',u32(regs.esp+8),'esp+8:',u32(regs.esp+8));
+	
 }
 //function HookDecHp(){Hooker.checkInfo(0xf1e270,function(regs){GetCnt(regs)})}
 function HookChkStack(addr)
@@ -293,6 +388,24 @@ function getMemoryBases(mm,addr)
 	return cms;
 }
 
+function listMemoriesWithAddr(addr)
+{
+	var mm=_GetMemoryBlocks(-1);
+	var ss=getMemoryBlock(mm,addr);
+	if(ss==undefined)
+	{
+		print("can't find addr.");
+		return;
+	}
+	ss=getMemoryBases(mm,ss.allocationBase);
+	if(ss==undefined)
+	{
+		print("can't find base.");
+		return;
+	}
+	displayObject(ss);
+}
+
 function CheckEsp(regs)
 {
 	var esp=regs.esp;
@@ -331,3 +444,4 @@ function GetItemObject()
 		print('err');
 	}
 }
+
