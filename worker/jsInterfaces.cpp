@@ -9,6 +9,8 @@
 #include "misc.h"
 #include "worker.h"
 #include "../gs/ToolFun.h"
+#include "../ControllerCmd/Process.h"
+
 
 using namespace v8;
 using namespace std;
@@ -22,6 +24,12 @@ if (args.Length()!=cnt)\
     return;\
 }
 
+#define CHECK_ARGS_MINCOUNT(cnt) \
+if (args.Length() < cnt)\
+{\
+    isolate->ThrowException(String::NewFromTwoByte(isolate, (uint16_t*)(L"need at least " L###cnt L" arguments!"))); \
+    return; \
+}
 
 const char* ToCString(const v8::String::Utf8Value& value) {
     return *value ? *value : "<string conversion failed>";
@@ -33,13 +41,41 @@ const wchar_t* ToWString(const v8::String::Value& value)
     return s ? s : L"<string conversion failed>";
 }
 
+vector<int> ConvertIntArray(Handle<Array> jsVal)
+{
+    auto jsArr = jsVal.As<Array>();
+    vector<int> newVec;
+    for (DWORD i = 0; i < jsArr->Length(); i++)
+    {
+        newVec.push_back(jsArr->Get(i)->Int32Value());
+    }
+    return newVec;
+}
+
+static void SetProperty(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(4);
+    if (!(args[0]->IsObject() || args[0]->IsFunction()))
+    {
+        THROW_EXCEPTION(L"arg 1 must be an object!");
+        return;
+    }
+
+    auto obj = args[0].As<Object>();
+    obj->Set(args[1], args[2], (PropertyAttribute)args[3]->Uint32Value());
+}
+
 static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
     HandleScope handleScope(isolate);
     auto array = Array::New(isolate, 100);
+    auto hp = (HANDLE)args[0]->Uint32Value();
     vector<MEMORY_BASIC_INFORMATION> blocks;
-    if (!GetMemoryBlocks(blocks))
+    if (!GetMemoryBlocks(hp, blocks))
     {
         isolate->ThrowException(String::NewFromTwoByte(isolate, (uint16_t*)L"get mem failed"));
         return;
@@ -70,11 +106,48 @@ static void DumpMemory(const v8::FunctionCallbackInfo<v8::Value>& args)
     DWORD size = args[2]->Uint32Value();
     String::Value fileName(args[3]);
 
-    if (!DumpMemory(processHandle, startAddr, size, (wchar_t*)*fileName))
+    auto ret=DumpMemory(processHandle, startAddr, size, (wchar_t*)*fileName);
+    args.GetReturnValue().Set((bool)ret);
+}
+
+static void SuspendAllThreads(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(2);
+
+    HandleScope scope(isolate);
+
+    auto processId = args[0]->Uint32Value();
+    if (!args[1]->IsArray())
     {
-        THROW_EXCEPTION(L"Dump failed.");
+        THROW_EXCEPTION(L"arg 2 must be an array!");
         return;
     }
+    auto ignoreIdList = ConvertIntArray(args[1].As<Array>());
+
+    auto suspendedThreads = new vector<int>();
+    
+    auto ret=SuspendAllThreads(processId, ignoreIdList, *suspendedThreads);
+    if (!ret)
+    {
+        delete suspendedThreads;
+        THROW_EXCEPTION(L"Can't suspend threads!");
+        return;
+    }
+
+    args.GetReturnValue().Set((uint32_t)suspendedThreads);
+}
+
+static void ResumeAllThreads(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
+    auto suspendThreads = (vector<int>*)args[0]->Uint32Value();
+
+    ResumeAllThreads(*suspendThreads);
+
+    delete suspendThreads;
 }
 
 static bool ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& pointers)
@@ -419,8 +492,10 @@ Handle<Context> InitV8()
 {
     Isolate* isolate = Isolate::GetCurrent();
 
-
+    //HandleScope scope(isolate);
     Handle<ObjectTemplate> global = ObjectTemplate::New(isolate);
+
+    global->Set(v8::String::NewFromUtf8(isolate, "_SetProperty"), v8::FunctionTemplate::New(isolate, SetProperty));
 
     global->Set(v8::String::NewFromUtf8(isolate, "_Print"), v8::FunctionTemplate::New(isolate, Print));
     global->Set(v8::String::NewFromUtf8(isolate, "_LoadJS"), v8::FunctionTemplate::New(isolate, Load));
@@ -429,6 +504,8 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_Mread"), v8::FunctionTemplate::New(isolate, Mread));
     global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"), v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
     global->Set(v8::String::NewFromUtf8(isolate, "_DumpMemory"), v8::FunctionTemplate::New(isolate, DumpMemory));
+    global->Set(v8::String::NewFromUtf8(isolate, "_SuspendAllThreads"), v8::FunctionTemplate::New(isolate, SuspendAllThreads));
+    global->Set(v8::String::NewFromUtf8(isolate, "_ResumeAllThreads"), v8::FunctionTemplate::New(isolate, ResumeAllThreads));
 
     global->Set(v8::String::NewFromUtf8(isolate, "_CheckInfoHook"), v8::FunctionTemplate::New(isolate, CheckInfoHook));
     global->Set(v8::String::NewFromUtf8(isolate, "_Unhook"), v8::FunctionTemplate::New(isolate, Unhook));
@@ -436,6 +513,7 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_CallFunction"), v8::FunctionTemplate::New(isolate, CallFunction));
 
     global->Set(v8::String::NewFromUtf8(isolate, "_DllPath"), v8::String::NewFromTwoByte(isolate, (uint16_t*)g_dllPath.c_str()));
+    global->Set(v8::String::NewFromUtf8(isolate, "_MyWindowThreadId"), Integer::NewFromUnsigned(isolate,g_myWindowThreadId));
 
     return Context::New(isolate, NULL, global);
 

@@ -18,11 +18,11 @@
 using namespace v8;
 using namespace std;
 
-static const bool g_DisplayRslt=true; //是否显示每条js指令的返回值
+static const bool g_DisplayRslt = true; //是否显示每条js指令的返回值
 
 static CommandBuffer g_CmdBuffer; //js输入缓冲
 static CommandBuffer g_ShortCmdBuffer; //短命令缓冲
-map<HWND,CommandBuffer*> g_BufferSelector; //
+map<HWND, CommandBuffer*> g_BufferSelector; //
 
 bool OutputWriter::isNotDisplay = false;
 
@@ -42,23 +42,23 @@ DWORD WINAPI CommandProc(LPARAM param)
     context->Enter();
 
     {
-            auto initJsFileName = g_dllPath + L"init.js";
-            auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
-            auto source = ReadJSFile(isolate, initJsFileName.c_str());
-            if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
-            {
-                OutputWriter::OutputInfo(L"%s loaded\n", initJsFileName.c_str());
-            }
+        auto initJsFileName = g_dllPath + L"init.js";
+        auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
+        auto source = ReadJSFile(isolate, initJsFileName.c_str());
+        if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
+        {
+            OutputWriter::OutputInfo(L"%s loaded\n", initJsFileName.c_str());
+        }
 
-            auto parserJsFileName= g_dllPath + L"parser.js";
-            name=String::NewFromTwoByte(isolate, (uint16_t*)parserJsFileName.c_str());
-            source = ReadJSFile(isolate, parserJsFileName.c_str());
-            if (source.IsEmpty() || !ExecuteString(isolate, source, name, false, true) ||
-                !context->Global()->Get(String::NewFromUtf8(isolate,"ParseShortCmd"))->IsFunction())
-            {
-                OutputWriter::OutputInfo(L"parser.js faild, short cmd disabled.\n");
-                EnableWindow(GetDlgItem(g_hDlgMain,IDC_INPUTCMD),FALSE);
-            }
+        auto parserJsFileName = g_dllPath + L"parser.js";
+        name = String::NewFromTwoByte(isolate, (uint16_t*)parserJsFileName.c_str());
+        source = ReadJSFile(isolate, parserJsFileName.c_str());
+        if (source.IsEmpty() || !ExecuteString(isolate, source, name, false, true) ||
+            !context->Global()->Get(String::NewFromUtf8(isolate, "ParseShortCmd"))->IsFunction())
+        {
+            OutputWriter::OutputInfo(L"parser.js faild, short cmd disabled.\n");
+            EnableWindow(GetDlgItem(g_hDlgMain, IDC_INPUTCMD), FALSE);
+        }
     }
 
     JSCommand cmd;
@@ -69,7 +69,7 @@ DWORD WINAPI CommandProc(LPARAM param)
             auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd.text.get());
             ExecuteString(isolate, source, String::NewFromUtf8(isolate, "console"), g_DisplayRslt, true);
             //OutputWriter::OutputInfo(L"\n");
-            if(cmd.compFlag)
+            if (cmd.compFlag)
                 SetEvent(cmd.compFlag);
         }
         else
@@ -82,78 +82,78 @@ DWORD WINAPI CommandProc(LPARAM param)
     isolate->Exit();
     return 0;
 }
-DWORD WINAPI NewEditProc(    
+DWORD WINAPI NewEditProc(
     _In_  HWND hwnd,
     _In_  UINT uMsg,
     _In_  WPARAM wParam,
     _In_  LPARAM lParam)
 {
-    if(uMsg==WM_KEYDOWN)
+    if (uMsg == WM_KEYDOWN)
     {
-        if(wParam==VK_UP || wParam==VK_DOWN)
+        if (wParam == VK_UP || wParam == VK_DOWN)
         {
-            auto itr=g_BufferSelector.find(hwnd);
-            if(itr!=g_BufferSelector.end())
+            auto itr = g_BufferSelector.find(hwnd);
+            if (itr != g_BufferSelector.end())
             {
-                auto cmdBuffer=itr->second;
-                auto newIdx=cmdBuffer->curIdx+((wParam==VK_UP)?-1:1);
-                if(newIdx<0 || newIdx>=(int)cmdBuffer->buffer.size())
+                auto cmdBuffer = itr->second;
+                auto newIdx = cmdBuffer->curIdx + ((wParam == VK_UP) ? -1 : 1);
+                if (newIdx < 0 || newIdx >= (int)cmdBuffer->buffer.size())
                     goto _End;
 
-                cmdBuffer->curIdx=newIdx;
-                SetWindowText(hwnd,cmdBuffer->buffer[newIdx].c_str());
+                cmdBuffer->curIdx = newIdx;
+                SetWindowText(hwnd, cmdBuffer->buffer[newIdx].c_str());
                 return 0;
             }
         }
     }
-    _End:
-    return CallWindowProc(g_OldEditProc,hwnd,uMsg,wParam,lParam);
+_End:
+    return CallWindowProc(g_OldEditProc, hwnd, uMsg, wParam, lParam);
 }
 
 bool AddParseString(shared_ptr<wchar_t>& text)
 {
-    wstring cmd=text.get();
-    bool hasQuote=(cmd.find(L'\'')!=wstring::npos);
-    bool hasDquote=(cmd.find(L'"')!=wstring::npos);
+    wstring cmd = text.get();
+    bool hasQuote = (cmd.find(L'\'') != wstring::npos);
+    bool hasDquote = (cmd.find(L'"') != wstring::npos);
     //bool hasEscape=(cmd.find(L'\\')!=wstring::npos);
-    if(hasQuote && !hasDquote)
-        cmd=L"ParseShortCmd(\""+cmd+L"\")";
-    else if(!(hasDquote && hasQuote))
-        cmd=L"ParseShortCmd('"+cmd+L"')";
+    if (hasQuote && !hasDquote)
+        cmd = L"ParseShortCmd(\"" + cmd + L"\")";
+    else if (!(hasDquote && hasQuote))
+        cmd = L"ParseShortCmd('" + cmd + L"')";
     else
         return false;
-    wcscpy(text.get(),cmd.c_str());
+    wcscpy(text.get(), cmd.c_str());
     return true;
 }
 
 void ReadCmdAndExecute(HWND hEdit)
 {
-    auto itr=g_BufferSelector.find(hEdit);
-    if(itr!=g_BufferSelector.end())
+    auto itr = g_BufferSelector.find(hEdit);
+    if (itr != g_BufferSelector.end())
     {
-        bool isShortCmd=(itr->second==&g_ShortCmdBuffer);
+        bool isShortCmd = (itr->second == &g_ShortCmdBuffer);
 
         auto textLen = GetWindowTextLength(hEdit);
         if (textLen == 0)
             return;
 
         //textLen+20 for ParseShortCmd(...);
-        JSCommand cmd={
+        JSCommand cmd = {
             shared_ptr<wchar_t>(new wchar_t[textLen + 20], [](wchar_t* p){delete[] p; }),
             0
         };
         GetWindowText(hEdit, cmd.text.get(), textLen + 1);
 
-        if(isShortCmd)
+        if (isShortCmd)
         {
             OutputWriter::OutputInfo(L"$ ");
             OutputWriter::OutputInfo(cmd.text);
             OutputWriter::OutputInfo(L"\n");
-            auto buffer=itr->second;
+            auto buffer = itr->second;
             buffer->buffer.push_back(cmd.text.get());
-            buffer->curIdx=buffer->buffer.size();
+            buffer->curIdx = buffer->buffer.size();
 
-            if(!AddParseString(cmd.text))
+            if (!AddParseString(cmd.text))
             {
                 OutputWriter::OutputInfo(L"invalid short cmd\n");
                 SetWindowText(hEdit, L"");
@@ -167,12 +167,17 @@ void ReadCmdAndExecute(HWND hEdit)
             OutputWriter::OutputInfo(L"> ");
             OutputWriter::OutputInfo(cmd.text);
             OutputWriter::OutputInfo(L"\n");
-            auto buffer=itr->second;
+            auto buffer = itr->second;
             buffer->buffer.push_back(cmd.text.get());
-            buffer->curIdx=buffer->buffer.size();
+            buffer->curIdx = buffer->buffer.size();
 
             CommandQueue.Enqueue(cmd);
-       }
+
+            //auto str = new wchar_t[textLen + 1];
+            //wcscpy(str, cmd.text.get());
+            //
+            //PostThreadMessage(g_hookWindowThreadId, WM_USER + 521, (WPARAM)str, ((DWORD)str ^ 0x15238958));
+        }
 
 
         SetWindowText(hEdit, L"");
@@ -193,36 +198,36 @@ LRESULT WINAPI WndProc(
     static HWND hCheck1;
     static HWND hCheck2;
 
-//#define DEF_CONST_SHARE_STRING(name, str) shared_ptr<wchar_t> name(new wchar_t[wcslen(str)+1]);wcscpy(name .get(),str);
+    //#define DEF_CONST_SHARE_STRING(name, str) shared_ptr<wchar_t> name(new wchar_t[wcslen(str)+1]);wcscpy(name .get(),str);
 
     switch (uMsg)
     {
     case WM_COMMAND:
         switch (wParam & 0xffff)
         {
-        //case IDC_CHECKMEM1:
-        //{
-        //                      DEF_CONST_SHARE_STRING(cmd, L"mm1=getMemoryBlocks()");
-        //                      OutputWriter::OutputInfo(L"Working...\n");
-        //                      EnableWindow(hCheck1, FALSE);
-        //                      EnableWindow(hCheck2, FALSE);
-        //                      //OutputWriter::ChangeDisplay(false);
-        //                      CommandQueue.Enqueue(cmd);
-        //}
-        //    break;
-        //case IDC_CHECKMEM2:
-        //{
-        //                      DEF_CONST_SHARE_STRING(cmd, L"mm2=getMemoryBlocks();rslt=getNewExecuteMemory(mm1,mm2);");
-        //                      OutputWriter::OutputInfo(L"Working...\n");
-        //                      EnableWindow(hCheck1, FALSE);
-        //                      EnableWindow(hCheck2, FALSE);
-        //                      //OutputWriter::ChangeDisplay(false);
-        //                      CommandQueue.Enqueue(cmd);
+            //case IDC_CHECKMEM1:
+            //{
+            //                      DEF_CONST_SHARE_STRING(cmd, L"mm1=getMemoryBlocks()");
+            //                      OutputWriter::OutputInfo(L"Working...\n");
+            //                      EnableWindow(hCheck1, FALSE);
+            //                      EnableWindow(hCheck2, FALSE);
+            //                      //OutputWriter::ChangeDisplay(false);
+            //                      CommandQueue.Enqueue(cmd);
+            //}
+            //    break;
+            //case IDC_CHECKMEM2:
+            //{
+            //                      DEF_CONST_SHARE_STRING(cmd, L"mm2=getMemoryBlocks();rslt=getNewExecuteMemory(mm1,mm2);");
+            //                      OutputWriter::OutputInfo(L"Working...\n");
+            //                      EnableWindow(hCheck1, FALSE);
+            //                      EnableWindow(hCheck2, FALSE);
+            //                      //OutputWriter::ChangeDisplay(false);
+            //                      CommandQueue.Enqueue(cmd);
 
-        //                      DEF_CONST_SHARE_STRING(cmd2, L"displayObject(rslt)");
-        //                      CommandQueue.Enqueue(cmd2);
-        //}
-        //    break;
+            //                      DEF_CONST_SHARE_STRING(cmd2, L"displayObject(rslt)");
+            //                      CommandQueue.Enqueue(cmd2);
+            //}
+            //    break;
         case IDOK:
             ReadCmdAndExecute(GetFocus());
             break;
@@ -231,18 +236,18 @@ LRESULT WINAPI WndProc(
         }
         break;
     case WM_INITDIALOG:
-        g_hDlgMain=hwnd;
+        g_hDlgMain = hwnd;
         g_hOutputEdit = GetDlgItem(hwnd, IDC_OUTPUT);
         hInputEdit = GetDlgItem(hwnd, IDC_INPUT);
-        hInputShortEdit=GetDlgItem(hwnd,IDC_INPUTCMD);
+        hInputShortEdit = GetDlgItem(hwnd, IDC_INPUTCMD);
         hCheck1 = GetDlgItem(hwnd, IDC_CHECKMEM1);
         hCheck2 = GetDlgItem(hwnd, IDC_CHECKMEM2);
 
-        g_BufferSelector[hInputEdit]=&g_CmdBuffer;
-        g_BufferSelector[hInputShortEdit]=&g_ShortCmdBuffer;
-        g_OldEditProc=(WNDPROC)GetWindowLongPtr(hInputShortEdit,GWL_WNDPROC);
-        SetWindowLongPtr(hInputEdit,GWL_WNDPROC,(LONG)NewEditProc);
-        SetWindowLongPtr(hInputShortEdit,GWL_WNDPROC,(LONG)NewEditProc);
+        g_BufferSelector[hInputEdit] = &g_CmdBuffer;
+        g_BufferSelector[hInputShortEdit] = &g_ShortCmdBuffer;
+        g_OldEditProc = (WNDPROC)GetWindowLongPtr(hInputShortEdit, GWL_WNDPROC);
+        SetWindowLongPtr(hInputEdit, GWL_WNDPROC, (LONG)NewEditProc);
+        SetWindowLongPtr(hInputShortEdit, GWL_WNDPROC, (LONG)NewEditProc);
 
         commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, 0);
         //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, (LPVOID)hwnd, 0, 0);

@@ -15,14 +15,14 @@ int WINAPI HookThread(LPARAM _)
         return 0;
     }
 
-    auto func = GetProcAddress(mod, "KeyboardProc");
+    auto func = GetProcAddress(mod, "GetMsgProc");
     if (!func)
     {
         wprintf(L"Can't find MessageProc in " DLL_NAME L"!\n");
         return 0;
     }
 
-    hHook = SetWindowsHookEx(WH_KEYBOARD, (HOOKPROC)func, mod, 0);
+    hHook = SetWindowsHookEx(WH_GETMESSAGE, (HOOKPROC)func, mod, 0);
     if (!hHook)
     {
         wprintf(L"Can't set windows hook!\n");

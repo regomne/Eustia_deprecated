@@ -3,7 +3,7 @@
 #include <windows.h>
 #include "../worker/Communication.h"
 #include "../worker/common.h"
-
+#include <vector>
 
 struct ProcInfo
 {
@@ -51,3 +51,6 @@ struct MyDataStruct
 
 int InjectStartingProcess(HANDLE process, HANDLE thread, wchar_t* dllPath);
 int CreateAndInject(TCHAR* appName, TCHAR* dllName, Communication& comm);
+
+BOOL SuspendAllThreads(int processId, std::vector<int>& ignoreIdList, std::vector<int>& theadIdStack);
+BOOL ResumeAllThreads(std::vector<int>& threadIdStack);

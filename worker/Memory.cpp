@@ -3,8 +3,9 @@
 #include <string>
 
 using namespace std;
-BOOL GetMemoryBlocks(std::vector<MEMORY_BASIC_INFORMATION>& blocks)
+BOOL GetMemoryBlocks(HANDLE hp, std::vector<MEMORY_BASIC_INFORMATION>& blocks)
 {
+    
     for (DWORD addr = 0; addr<0x80000000;)
     {
         /*if (IsBadReadPtr((void*)addr, 1))
@@ -14,7 +15,7 @@ BOOL GetMemoryBlocks(std::vector<MEMORY_BASIC_INFORMATION>& blocks)
         }*/
 
         MEMORY_BASIC_INFORMATION mbi;
-        if (!VirtualQuery((void*)addr, &mbi, sizeof(mbi)))
+        if (!VirtualQueryEx(hp, (void*)addr, &mbi, sizeof(mbi)))
         {
             DBGOUT(("query failed: %x", addr));
             addr += 0x1000;
@@ -84,7 +85,7 @@ BOOL DumpMemory(HANDLE process, void* start, int size, wchar_t* fileName)
         auto ret=ReadProcessMemory(process, curStart, memBuff, (leftBytes > 0x10000 ? 0x10000 : leftBytes), &readBytes);
         if (ret==0 || readBytes==0)
         {
-            DBGOUT(("Can't read memory. addr:%x, err:%d", curStart, GetLastError()));
+            DBGOUT(("Can't read memory. addr:%x, err:%d, left:%x, readBytes,%x", curStart, GetLastError(),leftBytes,readBytes));
             CloseHandle(hf);
             DeleteFile(fileName);
             return FALSE;

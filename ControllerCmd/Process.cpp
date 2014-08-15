@@ -1,6 +1,10 @@
 #include "../worker/common.h"
 #include "Process.h"
 #include "../worker/Communication.h"
+#include <vector>
+#include <TlHelp32.h>
+
+using namespace std;
 
 #define CODE_OFFSET 1024
 
@@ -110,4 +114,79 @@ int CreateAndInject(TCHAR* appName, TCHAR* dllName, Communication& comm)
 	ResumeThread(pi.hThread);
 
 	return 0;
+}
+
+
+BOOL SuspendAllThreads(int processId, vector<int>& ignoreIdList, vector<int>& theadIdStack)
+{
+    HANDLE hThreadSnap = INVALID_HANDLE_VALUE;
+    THREADENTRY32 te32;
+
+    hThreadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+    if (hThreadSnap == INVALID_HANDLE_VALUE)
+        return(FALSE);
+
+    te32.dwSize = sizeof(THREADENTRY32);
+    if (!Thread32First(hThreadSnap, &te32))
+    {
+        DBGOUT(("Thread32First Failed"));  // Show cause of failure
+        CloseHandle(hThreadSnap);     // Must clean up the snapshot object!
+        return(FALSE);
+    }
+
+    int owner = processId;
+    int selfId = GetCurrentThreadId();
+    ignoreIdList.push_back(selfId);
+    do
+    {
+        if (te32.th32OwnerProcessID == owner)
+        {
+            for (int i = 0; i < ignoreIdList.size(); i++)
+            {
+                if (te32.th32ThreadID == ignoreIdList[i])
+                    goto _Next1;
+            }
+            auto ht = OpenThread(THREAD_SUSPEND_RESUME, FALSE, te32.th32ThreadID);
+            if (ht == NULL)
+            {
+                //log
+                DBGOUT(("%d thread can't be open.", te32.th32ThreadID));
+                continue;
+            }
+            auto ret = SuspendThread(ht);
+            if (ret != -1)
+                theadIdStack.push_back(te32.th32ThreadID);
+            else
+            {
+                DBGOUT(("%d thead can't be suspended.", te32.th32ThreadID));
+            }
+
+            CloseHandle(ht);
+        }
+    _Next1:
+        ; //傻逼c++不允许标号后直接跟}
+    } while (Thread32Next(hThreadSnap, &te32));
+
+    CloseHandle(hThreadSnap);
+    return(TRUE);
+}
+
+BOOL ResumeAllThreads(vector<int>& threadIdStack)
+{
+    for (DWORD i = 0; i < threadIdStack.size(); i++)
+    {
+        auto ht = OpenThread(THREAD_SUSPEND_RESUME, FALSE, threadIdStack[i]);
+        if (ht == NULL)
+        {
+            DBGOUT(("%d thread cant be open while resume.", threadIdStack[i]));
+            continue;
+        }
+        auto ret = ResumeThread(ht);
+        if (ret == -1)
+        {
+            DBGOUT(("%d thread can't be resumed.", threadIdStack[i]));
+        }
+        CloseHandle(ht);
+    }
+    return TRUE;
 }
