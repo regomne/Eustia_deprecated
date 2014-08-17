@@ -33,8 +33,8 @@ BOOL GetMemoryBlocks(HANDLE hp, std::vector<MEMORY_BASIC_INFORMATION>& blocks)
 
 BOOL GetAPIAddress(wchar_t* moduleName, char* funcName, PVOID* addr)
 {
-    DBGOUTL((L"mod: %s", moduleName));
-    DBGOUT(("func: %s", funcName));
+    //DBGOUTL((L"mod: %s", moduleName));
+    //DBGOUT(("func: %s", funcName));
     if (moduleName)
     {
         auto mod = GetModuleHandle(moduleName);

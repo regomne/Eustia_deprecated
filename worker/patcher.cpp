@@ -10,9 +10,11 @@
 #include "worker.h"
 #include "../gs/toolfun.h"
 #include "patcher.h"
+#include "jsInterfaces.h"
 
 
 using namespace std;
+using namespace v8;
 
 list<HookSrcObject> g_HookList;
 
@@ -64,6 +66,52 @@ BOOL CheckInfoHook(PVOID srcAddress)
         !Hook32(&srcObj,0,&stubObj,MyGetInfo,"rs"))
     {
         DBGOUT(("Hook failed in %x",srcAddress));
+        return FALSE;
+    }
+
+    g_HookList.push_back(srcObj);
+
+    return TRUE;
+}
+
+void HOOKFUNC MyGetInfo2(Registers* regs, PVOID srcAddr)
+{
+    int curId = GetCurrentThreadId();
+    if (curId != g_hookWindowThreadId)
+    {
+        DBGOUT(("not current thread called. eip: %x", curId));
+        return;
+    }
+
+    HandleScope scope(g_mainIsolate);
+    auto cmd = new wchar_t[100];
+    swprintf_s(cmd, 100, L"Hooker.dispatchCheckFunction(%d,%d);", regs, srcAddr);
+
+    auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
+    delete[] cmd;
+    auto name = String::NewFromUtf8(g_mainIsolate, "hooker");
+    ExecuteString(g_mainIsolate, source, name, true, true);
+}
+
+BOOL CheckInfoHook2(PVOID srcAddress)
+{
+    HookSrcObject srcObj;
+    HookStubObject stubObj;
+
+    auto stubBuff = new BYTE[100];
+    DWORD oldProt;
+    auto rslt = VirtualProtect(stubBuff, 100, PAGE_EXECUTE_READWRITE, &oldProt);
+    if (!rslt)
+    {
+        DBGOUT(("Can't change mem attr while hook %x.", srcAddress));
+        return FALSE;
+    }
+
+    if (!InitializeHookSrcObject(&srcObj, srcAddress) ||
+        !InitializeStubObject(&stubObj, stubBuff, 100) ||
+        !Hook32(&srcObj, 0, &stubObj, MyGetInfo2, "rs"))
+    {
+        DBGOUT(("Hook failed in %x", srcAddress));
         return FALSE;
     }
 

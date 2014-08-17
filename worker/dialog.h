@@ -4,9 +4,11 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <v8.h>
 #include "ConcurrentQueue.h"
 
 extern HWND g_hOutputEdit;
+extern v8::Isolate* g_mainIsolate;
 
 struct CommandBuffer
 {
@@ -27,6 +29,13 @@ LRESULT WINAPI WndProc(
     _In_  WPARAM wParam,
     _In_  LPARAM lParam
     );
+
+enum JSEngineMessage
+{
+    JSENGINE_INIT=WM_USER+521,
+    JSENGINE_RUNCMD,
+};
+void LoadInitJsFiles(v8::Isolate* isolate);
 
 class OutputWriter
 {

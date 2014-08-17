@@ -25,7 +25,19 @@ int WINAPI HookThread(LPARAM _)
     hHook = SetWindowsHookEx(WH_GETMESSAGE, (HOOKPROC)func, mod, 0);
     if (!hHook)
     {
-        wprintf(L"Can't set windows hook!\n");
+        wprintf(L"Can't set windows hook message!\n");
+        return 0;
+    }
+    func = GetProcAddress(mod, "KeyboardProc");
+    if (!func)
+    {
+        wprintf(L"Can't find Keyboard in " DLL_NAME L"!\n");
+        return 0;
+    }
+    hHook = SetWindowsHookEx(WH_KEYBOARD, (HOOKPROC)func, mod, 0);
+    if (!hHook)
+    {
+        wprintf(L"Can't set windows hook kbd!\n");
         return 0;
     }
 

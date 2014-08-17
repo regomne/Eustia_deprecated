@@ -218,7 +218,7 @@ DWORD WINAPI SendingProc(LPARAM param)
     //        Sleep(1);
     //    }
     //}
-
+    return 0;
 }
 
 
@@ -299,8 +299,6 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
     return TRUE;
 }
 
-Isolate* g_mainIsolate;
-
 int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
 {
     static bool installed=false;
@@ -308,17 +306,9 @@ int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
     if (!installed && code>=0 && wParam == VK_F12)
     {
         installed = true;;
-        DBGOUT(("cur tid: %d", GetCurrentThreadId()));
+        g_hookWindowThreadId = GetCurrentThreadId();
         CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, &g_myWindowThreadId);
         
-        g_mainIsolate = Isolate::New();
-        g_mainIsolate->Enter();
-        {
-            HandleScope scope(g_mainIsolate);
-            auto context = InitV8();
-            context->Enter();
-
-        }
         return TRUE;
     }
     return CallNextHookEx(NULL, code, wParam, lParam);
@@ -332,26 +322,20 @@ int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
 
     if (code >= 0)
     {
-        if (!installed && msg->message == WM_KEYDOWN && msg->wParam == VK_F12)
+        if (msg->message == JSENGINE_INIT && msg->wParam == (msg->lParam ^ 0x15238958))
         {
-            installed = true;
-            g_hookWindowThreadId = GetCurrentThreadId();
-//            DBGOUT(("cur tid: %d", GetCurrentThreadId()));
-            CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, &g_myWindowThreadId);
-
             g_mainIsolate = Isolate::New();
             g_mainIsolate->Enter();
             {
                 HandleScope scope(g_mainIsolate);
                 auto context = InitV8();
                 context->Enter();
-
+                LoadInitJsFiles(g_mainIsolate);
             }
-        }
 
-        else if (msg->message == WM_USER + 521 && msg->wParam == (msg->lParam ^ 0x15238958))
+        }
+        else if (msg->message == JSENGINE_RUNCMD && msg->wParam == (msg->lParam ^ 0x15238958))
         {
-            DBGOUT(("521 recvd."));
             HandleScope scope(g_mainIsolate);
             auto cmd = (wchar_t*)msg->wParam;
 

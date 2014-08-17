@@ -31,6 +31,31 @@ ConcurrentQueue<JSCommand> CommandQueue; //jsÃüÁî¶ÓÁÐ
 HWND g_hDlgMain;
 static WNDPROC g_OldEditProc;
 
+Isolate* g_mainIsolate;
+
+void LoadInitJsFiles(Isolate* isolate)
+{
+    auto context = isolate->GetCurrentContext();
+    auto initJsFileName = g_dllPath + L"init.js";
+    auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
+    auto source = ReadJSFile(isolate, initJsFileName.c_str());
+    if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
+    {
+        OutputWriter::OutputInfo(L"%s loaded\n", initJsFileName.c_str());
+    }
+
+    auto parserJsFileName = g_dllPath + L"parser.js";
+    name = String::NewFromTwoByte(isolate, (uint16_t*)parserJsFileName.c_str());
+    source = ReadJSFile(isolate, parserJsFileName.c_str());
+    if (source.IsEmpty() || !ExecuteString(isolate, source, name, false, true) ||
+        !context->Global()->Get(String::NewFromUtf8(isolate, "ParseShortCmd"))->IsFunction())
+    {
+        OutputWriter::OutputInfo(L"parser.js faild, short cmd disabled.\n");
+        EnableWindow(GetDlgItem(g_hDlgMain, IDC_INPUTCMD), FALSE);
+    }
+}
+
+
 DWORD WINAPI CommandProc(LPARAM param)
 {
     auto isolate = Isolate::New();
@@ -40,26 +65,8 @@ DWORD WINAPI CommandProc(LPARAM param)
 
     auto context = InitV8();
     context->Enter();
-
-    {
-        auto initJsFileName = g_dllPath + L"init.js";
-        auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
-        auto source = ReadJSFile(isolate, initJsFileName.c_str());
-        if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
-        {
-            OutputWriter::OutputInfo(L"%s loaded\n", initJsFileName.c_str());
-        }
-
-        auto parserJsFileName = g_dllPath + L"parser.js";
-        name = String::NewFromTwoByte(isolate, (uint16_t*)parserJsFileName.c_str());
-        source = ReadJSFile(isolate, parserJsFileName.c_str());
-        if (source.IsEmpty() || !ExecuteString(isolate, source, name, false, true) ||
-            !context->Global()->Get(String::NewFromUtf8(isolate, "ParseShortCmd"))->IsFunction())
-        {
-            OutputWriter::OutputInfo(L"parser.js faild, short cmd disabled.\n");
-            EnableWindow(GetDlgItem(g_hDlgMain, IDC_INPUTCMD), FALSE);
-        }
-    }
+    
+    LoadInitJsFiles(isolate);
 
     JSCommand cmd;
     while (true)
@@ -160,7 +167,6 @@ void ReadCmdAndExecute(HWND hEdit)
                 return;
             }
 
-            CommandQueue.Enqueue(cmd);
         }
         else
         {
@@ -171,13 +177,13 @@ void ReadCmdAndExecute(HWND hEdit)
             buffer->buffer.push_back(cmd.text.get());
             buffer->curIdx = buffer->buffer.size();
 
-            CommandQueue.Enqueue(cmd);
 
-            //auto str = new wchar_t[textLen + 1];
-            //wcscpy(str, cmd.text.get());
-            //
-            //PostThreadMessage(g_hookWindowThreadId, WM_USER + 521, (WPARAM)str, ((DWORD)str ^ 0x15238958));
         }
+        //CommandQueue.Enqueue(cmd);
+        auto str = new wchar_t[wcslen(cmd.text.get()) + 1];
+        wcscpy(str, cmd.text.get());
+
+        PostThreadMessage(g_hookWindowThreadId, JSENGINE_RUNCMD, (WPARAM)str, ((DWORD)str ^ 0x15238958));
 
 
         SetWindowText(hEdit, L"");
@@ -249,7 +255,8 @@ LRESULT WINAPI WndProc(
         SetWindowLongPtr(hInputEdit, GWL_WNDPROC, (LONG)NewEditProc);
         SetWindowLongPtr(hInputShortEdit, GWL_WNDPROC, (LONG)NewEditProc);
 
-        commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, 0);
+        //commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, 0);
+        PostThreadMessage(g_hookWindowThreadId, JSENGINE_INIT, 0, 0 ^ 0x15238958);
         //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, (LPVOID)hwnd, 0, 0);
         if (!commandThread)
         {
