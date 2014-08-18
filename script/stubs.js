@@ -82,3 +82,10 @@ function getAPIAddress()
 {
 	return _GetAPIAddress.apply(this,arguments);
 }
+
+function getMemoryBlocks(hp)
+{
+	if(hp==undefined)
+		hp==-1;
+	return _GetMemoryBlocks(hp);
+}

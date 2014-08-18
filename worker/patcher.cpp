@@ -79,7 +79,7 @@ void HOOKFUNC MyGetInfo2(Registers* regs, PVOID srcAddr)
     int curId = GetCurrentThreadId();
     if (curId != g_hookWindowThreadId)
     {
-        DBGOUT(("not current thread called. eip: %x", curId));
+        DBGOUT(("not current thread called. tid: %x", curId));
         return;
     }
 

@@ -306,7 +306,6 @@ int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
     if (!installed && code>=0 && wParam == VK_F12)
     {
         installed = true;;
-        g_hookWindowThreadId = GetCurrentThreadId();
         CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, &g_myWindowThreadId);
         
         return TRUE;
@@ -320,10 +319,11 @@ int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
     auto msg = (MSG*)lParam;
     //DBGOUT(("captured, msg: %x, wp: %x, lp: %x", cwp->message, cwp->wParam, cwp->lParam));
 
-    if (code >= 0)
+    if (code >= 0 && CHECK_JSENGINE_MSG(msg->wParam, msg->lParam))
     {
-        if (msg->message == JSENGINE_INIT && msg->wParam == (msg->lParam ^ 0x15238958))
+        if (msg->message == JSENGINE_INIT)
         {
+            g_hookWindowThreadId = GetCurrentThreadId();
             g_mainIsolate = Isolate::New();
             g_mainIsolate->Enter();
             {
@@ -334,7 +334,7 @@ int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
             }
 
         }
-        else if (msg->message == JSENGINE_RUNCMD && msg->wParam == (msg->lParam ^ 0x15238958))
+        else if (msg->message == JSENGINE_RUNCMD)
         {
             HandleScope scope(g_mainIsolate);
             auto cmd = (wchar_t*)msg->wParam;
@@ -342,6 +342,12 @@ int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
             auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
             ExecuteString(g_mainIsolate, source, String::NewFromUtf8(g_mainIsolate, "console_main"), true, true);
             delete[] cmd;
+        }
+        else if (msg->message == JSENGINE_EXIT)
+        {
+            g_mainIsolate->GetCurrentContext()->Exit();
+            g_mainIsolate->Exit();
+            g_mainIsolate->Dispose();
         }
     }
     return CallNextHookEx(NULL, code, wParam, lParam);

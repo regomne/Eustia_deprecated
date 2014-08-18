@@ -183,7 +183,7 @@ void ReadCmdAndExecute(HWND hEdit)
         auto str = new wchar_t[wcslen(cmd.text.get()) + 1];
         wcscpy(str, cmd.text.get());
 
-        PostThreadMessage(g_hookWindowThreadId, JSENGINE_RUNCMD, (WPARAM)str, ((DWORD)str ^ 0x15238958));
+        PostThreadMessage(g_hookWindowThreadId, JSENGINE_RUNCMD, (WPARAM)str, MAKE_JSENGINE_PARAM(str));
 
 
         SetWindowText(hEdit, L"");
@@ -255,17 +255,19 @@ LRESULT WINAPI WndProc(
         SetWindowLongPtr(hInputEdit, GWL_WNDPROC, (LONG)NewEditProc);
         SetWindowLongPtr(hInputShortEdit, GWL_WNDPROC, (LONG)NewEditProc);
 
-        //commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, 0);
-        PostThreadMessage(g_hookWindowThreadId, JSENGINE_INIT, 0, 0 ^ 0x15238958);
         //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, (LPVOID)hwnd, 0, 0);
-        if (!commandThread)
-        {
-            MessageBox(hwnd, L"Can't create command thread!", 0, 0);
-            SendMessage(hwnd, WM_CLOSE, 0, 0);
-        }
+        PostThreadMessage(g_hookWindowThreadId, JSENGINE_INIT, 0, MAKE_JSENGINE_PARAM(0));
+        //commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, 0);
+        //if (!commandThread)
+        //{
+        //    MessageBox(hwnd, L"Can't create command thread!", 0, 0);
+        //    SendMessage(hwnd, WM_CLOSE, 0, 0);
+        //}
         break;
     case WM_CLOSE:
-        TerminateThread(commandThread, 0);
+
+        //TerminateThread(commandThread, 0);
+        PostThreadMessage(g_hookWindowThreadId, JSENGINE_EXIT, 0, MAKE_JSENGINE_PARAM(0));
         FreeLibraryAndExitThread(g_hModule, 0);
         EndDialog(hwnd, 0);
         break;

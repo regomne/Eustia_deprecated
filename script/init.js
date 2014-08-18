@@ -144,7 +144,7 @@ function getNewExecuteMemory(blocks1,blocks2)
 
 function dumpAllMem(handle,dir)
 {
-	mm=_GetMemoryBlocks(handle);
+	mm=getMemoryBlocks(handle);
 	mm.forEach(function(m){
 		var low=m.protect&0xff;
 		var high=m.protect&(~0xff);

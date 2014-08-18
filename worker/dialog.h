@@ -34,7 +34,11 @@ enum JSEngineMessage
 {
     JSENGINE_INIT=WM_USER+521,
     JSENGINE_RUNCMD,
+    JSENGINE_EXIT,
 };
+
+#define CHECK_JSENGINE_MSG(para1,para2) ((para1)==((para2)^0x15238958))
+#define MAKE_JSENGINE_PARAM(para1) ((DWORD)(para1)^0x15238958)
 void LoadInitJsFiles(v8::Isolate* isolate);
 
 class OutputWriter

@@ -390,7 +390,7 @@ function getMemoryBases(mm,addr)
 
 function listMemoriesWithAddr(addr)
 {
-	var mm=_GetMemoryBlocks(-1);
+	var mm=getMemoryBlocks(-1);
 	var ss=getMemoryBlock(mm,addr);
 	if(ss==undefined)
 	{
@@ -445,3 +445,23 @@ function GetItemObject()
 	}
 }
 
+function myCheckVal2(regs,off)
+{
+	var esp=regs.esp+off;
+	var pkId=u16(esp);
+	var buff=u32(esp+4);
+	var buffLen=u16(esp+8);
+
+	if(pkId==92)
+	{
+	print(buff,buffLen);	printMem(buff,buffLen);
+	}
+}
+function checkVal2(addr,off){Hooker.checkInfo(addr,function(regs){myCheckVal2(regs,off)})}
+
+function hookVectorPush(){Hooker.checkInfo(0x1929da3,function(regs){
+	if(regs.ecx==u32(u32(0x2aa4160)+0x30a4))
+	{
+		CheckVal(regs);
+	}
+})}

@@ -8,3 +8,4 @@ extern std::list<HookSrcObject> g_HookList;
 BOOL CheckInfoHook(PVOID srcAddress);
 void RemoveHook(PVOID srcAddress);
 void RemoveAllHooks();
+BOOL CheckInfoHook2(PVOID srcAddress);

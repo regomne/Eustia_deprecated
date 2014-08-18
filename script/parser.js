@@ -2,11 +2,11 @@ function ParseShortCmd(cmd)
 {
 	if(cmd=='cm1')
 	{
-		eval('mm1=_GetMemoryBlocks()');
+		eval('mm1=getMemoryBlocks()');
 	}
 	else if(cmd=='cm2')
 	{
-		eval('mm2=_GetMemoryBlocks();rslt=getNewExecuteMemory(mm1,mm2)');
+		eval('mm2=getMemoryBlocks();rslt=getNewExecuteMemory(mm1,mm2)');
 		eval('displayMemInfo(rslt.newExes)');
 	}
 	else if(cmd=='lf')
