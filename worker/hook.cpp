@@ -306,6 +306,7 @@ int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
     if (!installed && code>=0 && wParam == VK_F12)
     {
         installed = true;;
+        g_hookWindowThreadId = GetCurrentThreadId();
         CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, &g_myWindowThreadId);
         
         return TRUE;
@@ -323,7 +324,6 @@ int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
     {
         if (msg->message == JSENGINE_INIT)
         {
-            g_hookWindowThreadId = GetCurrentThreadId();
             g_mainIsolate = Isolate::New();
             g_mainIsolate->Enter();
             {
@@ -345,9 +345,14 @@ int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
         }
         else if (msg->message == JSENGINE_EXIT)
         {
-            g_mainIsolate->GetCurrentContext()->Exit();
-            g_mainIsolate->Exit();
-            g_mainIsolate->Dispose();
+            //HandleScope scope(g_mainIsolate);
+            //DBGOUT(("exit.1"));
+            //g_mainIsolate->GetCurrentContext()->Exit();
+            //DBGOUT(("exit.2"));
+            //g_mainIsolate->Exit();
+            //DBGOUT(("exit.3"));
+            //g_mainIsolate->Dispose();
+            //DBGOUT(("exit complete."));
         }
     }
     return CallNextHookEx(NULL, code, wParam, lParam);
