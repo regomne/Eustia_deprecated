@@ -2,6 +2,7 @@
 
 #include "dialog.h"
 #include <windows.h>
+#include <intrin.h>
 #include <memory>
 #include <vector>
 #include <map>
@@ -19,6 +20,7 @@ using namespace v8;
 using namespace std;
 
 static const bool g_DisplayRslt = true; //是否显示每条js指令的返回值
+long g_isProcessed = 0;
 
 static CommandBuffer g_CmdBuffer; //js输入缓冲
 static CommandBuffer g_ShortCmdBuffer; //短命令缓冲
@@ -55,6 +57,39 @@ void LoadInitJsFiles(Isolate* isolate)
     }
 }
 
+void ProcessEngineMsg(MSG* msg)
+{
+    if (msg->message == JSENGINE_INIT)
+    {
+        g_mainIsolate = Isolate::New();
+        g_mainIsolate->Enter();
+        {
+            HandleScope scope(g_mainIsolate);
+            auto context = InitV8();
+            context->Enter();
+            LoadInitJsFiles(g_mainIsolate);
+        }
+
+    }
+    else if (msg->message == JSENGINE_RUNCMD)
+    {
+        HandleScope scope(g_mainIsolate);
+        auto cmd = (wchar_t*)msg->wParam;
+
+        auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
+        ExecuteString(g_mainIsolate, source, String::NewFromUtf8(g_mainIsolate, "console_main"), true, true);
+        delete[] cmd;
+    }
+    else if (msg->message == JSENGINE_EXIT)
+    {
+        HandleScope scope(g_mainIsolate);
+        g_mainIsolate->GetCurrentContext()->Exit();
+        g_mainIsolate->Exit();
+        g_mainIsolate->Dispose();
+        //FreeLibrary(g_hModule);
+    }
+
+}
 
 DWORD WINAPI CommandProc(LPARAM param)
 {
@@ -73,9 +108,10 @@ DWORD WINAPI CommandProc(LPARAM param)
     {
         if (CommandQueue.Dequeue(cmd))
         {
+            if (cmd.text.get() == nullptr)
+                break;
             auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd.text.get());
             ExecuteString(isolate, source, String::NewFromUtf8(isolate, "console"), g_DisplayRslt, true);
-            //OutputWriter::OutputInfo(L"\n");
             if (cmd.compFlag)
                 SetEvent(cmd.compFlag);
         }
@@ -162,7 +198,7 @@ void ReadCmdAndExecute(HWND hEdit)
 
             if (!AddParseString(cmd.text))
             {
-                OutputWriter::OutputInfo(L"invalid short cmd\n");
+                OutputWriter::OutputInfo(L"Can't covert short cmd!\n");
                 SetWindowText(hEdit, L"");
                 return;
             }
@@ -201,8 +237,10 @@ LRESULT WINAPI WndProc(
     static HWND hInputEdit;
     static HWND hInputShortEdit;
     static HANDLE commandThread;
+    static DWORD commandThreadId;
     static HWND hCheck1;
     static HWND hCheck2;
+    JSCommand exitCommand;
 
     //#define DEF_CONST_SHARE_STRING(name, str) shared_ptr<wchar_t> name(new wchar_t[wcslen(str)+1]);wcscpy(name .get(),str);
 
@@ -257,7 +295,7 @@ LRESULT WINAPI WndProc(
 
         //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, (LPVOID)hwnd, 0, 0);
         PostThreadMessage(g_hookWindowThreadId, JSENGINE_INIT, 0, MAKE_JSENGINE_PARAM(0));
-        //commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, 0);
+        //commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, &commandThreadId);
         //if (!commandThread)
         //{
         //    MessageBox(hwnd, L"Can't create command thread!", 0, 0);
@@ -267,8 +305,10 @@ LRESULT WINAPI WndProc(
     case WM_CLOSE:
 
         //TerminateThread(commandThread, 0);
+        //exitCommand.text = shared_ptr<wchar_t>();
+        //exitCommand.compFlag = 0;
+        //CommandQueue.Enqueue(exitCommand);
         PostThreadMessage(g_hookWindowThreadId, JSENGINE_EXIT, 0, MAKE_JSENGINE_PARAM(0));
-        FreeLibraryAndExitThread(g_hModule, 0);
         EndDialog(hwnd, 0);
         break;
     default:

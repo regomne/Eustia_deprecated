@@ -53,9 +53,25 @@ function setProperty(obj,key,name,prop)
 	_SetProperty(obj,key,name,rProp);
 }
 
+function disassemble(addr)
+{
+	return _Disassemble(addr);
+}
+
 function mread(addr,size)
 {
 	return _Mread(addr,size);
+}
+
+function mwrite(addr,buff,start,len)
+{
+	if(buff==undefined)
+		throw "arg2 must be a string";
+	if(start==undefined)
+		start=0;
+	if(len==undefined)
+		len=buff.length-start;
+	return _Mwrite(addr,buff,start,len);
 }
 
 function dumpMemory()

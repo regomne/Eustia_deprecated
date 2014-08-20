@@ -1,12 +1,18 @@
+#include "jsInterfaces.h"
+
 #include <v8.h>
 #include <assert.h>
-#include "dialog.h"
 #include <memory>
 #include <algorithm>
+
+#define BEA_ENGINE_STATIC
+#include <beaengine/BeaEngine.h>
+
+#include "dialog.h"
 #include "Memory.h"
-#include "jsInterfaces.h"
 #include "patcher.h"
 #include "misc.h"
+#include "asm.h"
 #include "worker.h"
 #include "../gs/ToolFun.h"
 #include "../ControllerCmd/Process.h"
@@ -165,12 +171,14 @@ static bool ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& point
     {
         auto ss = jsVal->ToString();
         
-        String::Utf8Value str(jsVal);
-        auto strBuff = new char[str.length() + 1];
-        memcpy(strBuff, *str, str.length());
-        strBuff[str.length()] = 0;
+        //String::Utf8Value str(jsVal);
+        auto strBuff = new BYTE[ss->Length() + 1];
+        //memcpy(strBuff, *str, str.length());
+        //strBuff[str.length()] = 0;
+        auto wroteBytes=ss->WriteOneByte(strBuff);
+        //DBGOUTHEX((strBuff, wroteBytes));
         pointers.push_back(strBuff);
-        *(char**)elem = strBuff;
+        *(BYTE**)elem = strBuff;
     }
     else if (jsVal->IsArray())
     {
@@ -347,6 +355,74 @@ static void Mread(const v8::FunctionCallbackInfo<v8::Value>& args)
     return;
 }
 
+static void Mwrite(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    if (args.Length() != 4 || !args[0]->IsUint32())
+    {
+        args.GetIsolate()->ThrowException(
+            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        return;
+    }
+
+    auto addr = args[0]->Uint32Value();
+    auto str = args[1]->ToString();
+    auto start = args[2]->Uint32Value();
+    auto len = args[3]->Uint32Value();
+    if ((int)start > str->Length())
+    {
+        start = str->Length();
+    }
+    if ((int)(start + len) > str->Length())
+    {
+        len = str->Length() - start;
+    }
+
+    __try
+    {
+        auto wroteBytes = str->WriteOneByte((uint8_t*)addr, start, len, String::NO_NULL_TERMINATION);
+        args.GetReturnValue().Set(wroteBytes);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        THROW_EXCEPTION(L"Can't write memory");
+    }
+}
+
+static void Disassmble(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
+
+    auto eip = args[0]->Uint32Value();
+    //auto addr = args[1]->Uint32Value();
+
+    DISASM disasm = { 0 };
+    disasm.Options = Tabulation | PrefixedNumeral;
+    disasm.EIP = (UIntPtr)eip;
+    int len;
+    __try
+    {
+        len = Disasm(&disasm);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        THROW_EXCEPTION(L"Exception occured!");
+        return;
+    }
+    if (len == UNKNOWN_OPCODE)
+    {
+        THROW_EXCEPTION(L"Unknown opcode");
+        return;
+    }
+
+    auto obj = Object::New(isolate);
+    obj->Set(String::NewFromOneByte(isolate, (uint8_t*)"length"), Integer::NewFromUnsigned(isolate, len));
+    obj->Set(String::NewFromOneByte(isolate, (uint8_t*)"string"), String::NewFromOneByte(isolate, (uint8_t*)disasm.CompleteInstr));
+    args.GetReturnValue().Set(obj);
+}
+
 static void CheckInfoHook(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     if (args.Length() != 1 || !args[0]->IsUint32())
@@ -502,6 +578,7 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_ReadText"), v8::FunctionTemplate::New(isolate, Read));
 
     global->Set(v8::String::NewFromUtf8(isolate, "_Mread"), v8::FunctionTemplate::New(isolate, Mread));
+    global->Set(v8::String::NewFromUtf8(isolate, "_Mwrite"), v8::FunctionTemplate::New(isolate, Mwrite));
     global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"), v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
     global->Set(v8::String::NewFromUtf8(isolate, "_DumpMemory"), v8::FunctionTemplate::New(isolate, DumpMemory));
     global->Set(v8::String::NewFromUtf8(isolate, "_SuspendAllThreads"), v8::FunctionTemplate::New(isolate, SuspendAllThreads));
@@ -511,6 +588,7 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_Unhook"), v8::FunctionTemplate::New(isolate, Unhook));
     global->Set(v8::String::NewFromUtf8(isolate, "_GetAPIAddress"), v8::FunctionTemplate::New(isolate, GetAPIAddress));
     global->Set(v8::String::NewFromUtf8(isolate, "_CallFunction"), v8::FunctionTemplate::New(isolate, CallFunction));
+    global->Set(v8::String::NewFromUtf8(isolate, "_Disassemble"), v8::FunctionTemplate::New(isolate, Disassmble));
 
     global->Set(v8::String::NewFromUtf8(isolate, "_DllPath"), v8::String::NewFromTwoByte(isolate, (uint16_t*)g_dllPath.c_str()));
     global->Set(v8::String::NewFromUtf8(isolate, "_MyWindowThreadId"), Integer::NewFromUnsigned(isolate,g_myWindowThreadId));

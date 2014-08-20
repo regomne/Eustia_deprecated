@@ -223,7 +223,7 @@ DWORD WINAPI SendingProc(LPARAM param)
 
 
 
-int WINAPI WindowThread(LPARAM)
+int WINAPI WindowThread(LPARAM _)
 {
     /*INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_PROGRESS_CLASS };
     InitCommonControlsEx(&icc);*/
@@ -277,13 +277,13 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
         val=TlsGetValue(g_CompFlagIndex);
         if(val==0)
         {
-            val=CreateEvent(0,0,FALSE,0);
+            val = CreateEvent(0, 0, 0, 0);
             //DBGOUT(("thread entered. tid:%d, eve: %x",GetCurrentThreadId(),val));
             TlsSetValue(g_CompFlagIndex,val);
         }
         break;
     case DLL_THREAD_DETACH:
-        val=TlsGetValue(g_CompFlagIndex);
+        val=(long*)TlsGetValue(g_CompFlagIndex);
         if(val)
         {
             //DBGOUT(("thread exit. tid:%d",GetCurrentThreadId()));
@@ -322,38 +322,7 @@ int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
 
     if (code >= 0 && CHECK_JSENGINE_MSG(msg->wParam, msg->lParam))
     {
-        if (msg->message == JSENGINE_INIT)
-        {
-            g_mainIsolate = Isolate::New();
-            g_mainIsolate->Enter();
-            {
-                HandleScope scope(g_mainIsolate);
-                auto context = InitV8();
-                context->Enter();
-                LoadInitJsFiles(g_mainIsolate);
-            }
-
-        }
-        else if (msg->message == JSENGINE_RUNCMD)
-        {
-            HandleScope scope(g_mainIsolate);
-            auto cmd = (wchar_t*)msg->wParam;
-
-            auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
-            ExecuteString(g_mainIsolate, source, String::NewFromUtf8(g_mainIsolate, "console_main"), true, true);
-            delete[] cmd;
-        }
-        else if (msg->message == JSENGINE_EXIT)
-        {
-            //HandleScope scope(g_mainIsolate);
-            //DBGOUT(("exit.1"));
-            //g_mainIsolate->GetCurrentContext()->Exit();
-            //DBGOUT(("exit.2"));
-            //g_mainIsolate->Exit();
-            //DBGOUT(("exit.3"));
-            //g_mainIsolate->Dispose();
-            //DBGOUT(("exit complete."));
-        }
+        ProcessEngineMsg(msg);
     }
     return CallNextHookEx(NULL, code, wParam, lParam);
 }

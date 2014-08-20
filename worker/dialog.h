@@ -9,6 +9,7 @@
 
 extern HWND g_hOutputEdit;
 extern v8::Isolate* g_mainIsolate;
+extern long g_isProcessed;
 
 struct CommandBuffer
 {
@@ -40,6 +41,7 @@ enum JSEngineMessage
 #define CHECK_JSENGINE_MSG(para1,para2) ((para1)==((para2)^0x15238958))
 #define MAKE_JSENGINE_PARAM(para1) ((DWORD)(para1)^0x15238958)
 void LoadInitJsFiles(v8::Isolate* isolate);
+void ProcessEngineMsg(MSG* msg);
 
 class OutputWriter
 {

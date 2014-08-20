@@ -15,7 +15,8 @@ BOOL GetMemoryBlocks(HANDLE hp, std::vector<MEMORY_BASIC_INFORMATION>& blocks)
         }*/
 
         MEMORY_BASIC_INFORMATION mbi;
-        if (!VirtualQueryEx(hp, (void*)addr, &mbi, sizeof(mbi)))
+        if ((hp!=(HANDLE)-1) ? (!VirtualQueryEx(hp, (void*)addr, &mbi, sizeof(mbi))) :
+            (!VirtualQuery((void*)addr, &mbi, sizeof(mbi))))
         {
             DBGOUT(("query failed: %x", addr));
             addr += 0x1000;

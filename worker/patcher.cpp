@@ -1,6 +1,7 @@
 #include "common.h"
 #include "Communication.h"
 #include <windows.h>
+#include <intrin.h>
 #include <ilhook.h>
 #include <vector>
 #include <list>
@@ -34,7 +35,7 @@ void HOOKFUNC MyGetInfo(Registers* regs,PVOID srcAddr)
     }
     if (compFlag == 0)
     {
-        compFlag = CreateEvent(0, 0, 0, 0);
+        compFlag = CreateEvent(0,0,0,0);
         TlsSetValue(g_CompFlagIndex, compFlag);
     }
     cmd.compFlag=compFlag;
@@ -79,7 +80,8 @@ void HOOKFUNC MyGetInfo2(Registers* regs, PVOID srcAddr)
     int curId = GetCurrentThreadId();
     if (curId != g_hookWindowThreadId)
     {
-        DBGOUT(("not current thread called. tid: %x", curId));
+        //MyGetInfo(regs, srcAddr);
+        DBGOUT(("not this thread!"));
         return;
     }
 
