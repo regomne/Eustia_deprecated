@@ -79,7 +79,7 @@ static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     HandleScope handleScope(isolate);
     auto array = Array::New(isolate, 100);
-    auto hp = (HANDLE)args[0]->Uint32Value();
+    auto hp = (HANDLE)args[0]->Int32Value();
     vector<MEMORY_BASIC_INFORMATION> blocks;
     if (!GetMemoryBlocks(hp, blocks))
     {

@@ -5,7 +5,7 @@
 using namespace std;
 BOOL GetMemoryBlocks(HANDLE hp, std::vector<MEMORY_BASIC_INFORMATION>& blocks)
 {
-    
+    DBGOUT(("hp: %x", hp));
     for (DWORD addr = 0; addr<0x80000000;)
     {
         /*if (IsBadReadPtr((void*)addr, 1))
@@ -18,7 +18,7 @@ BOOL GetMemoryBlocks(HANDLE hp, std::vector<MEMORY_BASIC_INFORMATION>& blocks)
         if ((hp!=(HANDLE)-1) ? (!VirtualQueryEx(hp, (void*)addr, &mbi, sizeof(mbi))) :
             (!VirtualQuery((void*)addr, &mbi, sizeof(mbi))))
         {
-            DBGOUT(("query failed: %x", addr));
+            DBGOUT(("query failed: %x, lasterr: %d", addr,GetLastError()));
             addr += 0x1000;
             continue;
         }
