@@ -289,6 +289,10 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
             //DBGOUT(("thread exit. tid:%d",GetCurrentThreadId()));
             CloseHandle(val);
         }
+        if (GetCurrentThreadId() == g_hookWindowThreadId)
+        {
+            MessageBox(0, L"main thread exited!", 0, 0);
+        }
         break;
     case DLL_PROCESS_DETACH:
         TlsFree(g_CompFlagIndex);
@@ -303,7 +307,7 @@ int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
 {
     static bool installed=false;
     //DBGOUT(("captured, key: %x", wParam));
-    if (!installed && code>=0 && wParam == VK_F12)
+    if (!installed && code>=0 && wParam == VK_F11)
     {
         installed = true;;
         g_hookWindowThreadId = GetCurrentThreadId();

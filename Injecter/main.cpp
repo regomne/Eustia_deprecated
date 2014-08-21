@@ -2,8 +2,10 @@
 #include <conio.h>
 #include <windows.h>
 #include "../worker/common.h"
+#include "resource.h"
 
-HANDLE hSuccess;
+#pragma comment(linker,"/entry:main1")
+
 HHOOK hHook;
 
 int WINAPI HookThread(LPARAM _)
@@ -11,70 +13,61 @@ int WINAPI HookThread(LPARAM _)
     auto mod = LoadLibrary(DLL_NAME);
     if (!mod)
     {
-        wprintf(L"Can't find " DLL_NAME L"!\n");
+        MessageBox(0, L"Can't find " DLL_NAME L"!", 0, 0);
         return 0;
     }
 
     auto func = GetProcAddress(mod, "GetMsgProc");
     if (!func)
     {
-        wprintf(L"Can't find MessageProc in " DLL_NAME L"!\n");
+        MessageBox(0, L"Can't find MessageProc in " DLL_NAME L"!", 0, 0);
         return 0;
     }
 
     hHook = SetWindowsHookEx(WH_GETMESSAGE, (HOOKPROC)func, mod, 0);
     if (!hHook)
     {
-        wprintf(L"Can't set windows hook message!\n");
+        MessageBox(0, L"Can't set windows hook message!", 0, 0);
         return 0;
     }
     func = GetProcAddress(mod, "KeyboardProc");
     if (!func)
     {
-        wprintf(L"Can't find Keyboard in " DLL_NAME L"!\n");
+        MessageBox(0, L"Can't find Keyboard in " DLL_NAME L"!", 0, 0);
         return 0;
     }
     hHook = SetWindowsHookEx(WH_KEYBOARD, (HOOKPROC)func, mod, 0);
     if (!hHook)
     {
-        wprintf(L"Can't set windows hook kbd!\n");
+        MessageBox(0, L"Can't set windows hook kbd!", 0, 0);
         return 0;
     }
-
-    SetEvent(hSuccess);
-
-    MSG message;
-    while (GetMessage(&message, NULL, 0, 0) != 0) 
-    {
-        TranslateMessage(&message);
-        DispatchMessage(&message);
-    }
-    return 0;
+    return 1;
 }
 
-int main()
+int WINAPI WndProc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-    
-    hSuccess = CreateEvent(0, FALSE, FALSE, 0);
-
-    DWORD thId;
-    auto hth = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)HookThread, 0, 0, &thId);
-    if (hth == NULL)
+    switch (uMsg)
     {
-        wprintf(L"Can't create working thread!\n");
-        return 0;
-    }
-    
-    if (WaitForSingleObject(hSuccess, 1000) != WAIT_OBJECT_0)
-    {
-        wprintf(L"Some error occured.\n");
-        return 0;
+    case WM_INITDIALOG:
+        if (!HookThread(0))
+            ExitProcess(0);
+        break;
+    case WM_CLOSE:
+        UnhookWindowsHookEx(hHook);
+        EndDialog(hwnd, 0);
+        break;
+    default:
+        break;
     }
 
-    wprintf(L"Hook installed.\nPress any key to exit...");
-    _getch();
+    return FALSE;
+}
 
-    UnhookWindowsHookEx(hHook);
-    //PostThreadMessage(thId, WM_QUIT, 0, 0);
+int main1()
+{
+
+    DialogBoxParam(GetModuleHandle(0), (LPCWSTR)IDD_MAIN, 0, WndProc, 0);
+    ExitProcess(0);
     return 0;
 }

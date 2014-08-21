@@ -18,6 +18,7 @@ using namespace std;
 using namespace v8;
 
 list<HookSrcObject> g_HookList;
+CRITICAL_SECTION g_GetInfoLock;
 
 void HOOKFUNC MyGetInfo(Registers* regs,PVOID srcAddr)
 {
@@ -77,12 +78,12 @@ BOOL CheckInfoHook(PVOID srcAddress)
 
 void HOOKFUNC MyGetInfo2(Registers* regs, PVOID srcAddr)
 {
+    EnterCriticalSection(&g_GetInfoLock);
+
     int curId = GetCurrentThreadId();
     if (curId != g_hookWindowThreadId)
     {
-        //MyGetInfo(regs, srcAddr);
-        DBGOUT(("not this thread!"));
-        return;
+        g_mainIsolate->Enter();
     }
 
     HandleScope scope(g_mainIsolate);
@@ -93,6 +94,13 @@ void HOOKFUNC MyGetInfo2(Registers* regs, PVOID srcAddr)
     delete[] cmd;
     auto name = String::NewFromUtf8(g_mainIsolate, "hooker");
     ExecuteString(g_mainIsolate, source, name, true, true);
+
+    if (curId != g_hookWindowThreadId)
+    {
+        g_mainIsolate->Exit();
+    }
+
+    LeaveCriticalSection(&g_GetInfoLock);
 }
 
 BOOL CheckInfoHook2(PVOID srcAddress)

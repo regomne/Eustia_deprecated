@@ -14,6 +14,7 @@
 #include "jsInterfaces.h"
 #include "worker.h"
 #include "misc.h"
+#include "patcher.h"
 #include "common.h"
 
 using namespace v8;
@@ -69,7 +70,7 @@ void ProcessEngineMsg(MSG* msg)
             context->Enter();
             LoadInitJsFiles(g_mainIsolate);
         }
-
+        InitializeCriticalSection(&g_GetInfoLock);
     }
     else if (msg->message == JSENGINE_RUNCMD)
     {
@@ -86,6 +87,7 @@ void ProcessEngineMsg(MSG* msg)
         g_mainIsolate->GetCurrentContext()->Exit();
         g_mainIsolate->Exit();
         g_mainIsolate->Dispose();
+        DeleteCriticalSection(&g_GetInfoLock);
         //FreeLibrary(g_hModule);
     }
 
