@@ -1,4 +1,6 @@
-﻿var Global={};
+﻿var __time1=(new Date()).getTime();
+
+var Global={};
 var LogLevel=5;
 var scriptPath=[_DllPath];
 
@@ -44,6 +46,7 @@ load('script\\stubs.js');
 load('script\\myString.js');
 tryLoad('script\\memory.js');
 tryLoad('script\\asm.js');
+tryLoad('script\\win32.js');
 
 function displayObject(obj)
 {
@@ -230,3 +233,7 @@ function makeSimpleFunction(addr,callType)
 		return callFunction.apply(this,args);
 	}
 }
+
+var __time2=(new Date()).getTime();
+if(LogLevel>=5)
+	print('init time:',(__time2-__time1).toString()+'ms');

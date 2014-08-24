@@ -39,3 +39,8 @@ setProperty(String.prototype,'rjust',function(n,ch)
 	
 	return ch.repeat(n-this.length)+this;
 },'de');
+
+setProperty(String.prototype,'startswith',function(s)
+{
+	return (this.substring(0,s.length)==s);
+},'de');

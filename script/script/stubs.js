@@ -102,6 +102,6 @@ function getAPIAddress()
 function getMemoryBlocks(hp)
 {
 	if(hp==undefined)
-		hp==-1;
+		hp=-1;
 	return _GetMemoryBlocks(hp);
 }
