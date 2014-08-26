@@ -74,6 +74,11 @@ function mwrite(addr,buff,start,len)
 	return _Mwrite(addr,buff,start,len);
 }
 
+function readText(fname)
+{
+	return _ReadText(fname);
+}
+
 function dumpMemory()
 {
 	return _DumpMemory.apply(this,arguments);

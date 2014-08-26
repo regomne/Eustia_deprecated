@@ -512,7 +512,7 @@ static void Print(const v8::FunctionCallbackInfo<v8::Value>& args) {
 // The callback that is invoked by v8 whenever the JavaScript 'read'
 // function is called.  This function loads the content of the file named in
 // the argument into a JavaScript string.
-static void Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void ReadText(const v8::FunctionCallbackInfo<v8::Value>& args) {
     if (args.Length() != 1) {
         args.GetIsolate()->ThrowException(
             v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
@@ -537,7 +537,7 @@ static void Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
 // The callback that is invoked by v8 whenever the JavaScript 'load'
 // function is called.  Loads, compiles and executes its argument
 // JavaScript file.
-static void Load(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void LoadJS(const v8::FunctionCallbackInfo<v8::Value>& args) {
     for (int i = 0; i < args.Length(); i++) {
         v8::HandleScope handle_scope(args.GetIsolate());
         v8::String::Value file(args[i]);
@@ -574,8 +574,8 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_SetProperty"), v8::FunctionTemplate::New(isolate, SetProperty));
 
     global->Set(v8::String::NewFromUtf8(isolate, "_Print"), v8::FunctionTemplate::New(isolate, Print));
-    global->Set(v8::String::NewFromUtf8(isolate, "_LoadJS"), v8::FunctionTemplate::New(isolate, Load));
-    global->Set(v8::String::NewFromUtf8(isolate, "_ReadText"), v8::FunctionTemplate::New(isolate, Read));
+    global->Set(v8::String::NewFromUtf8(isolate, "_LoadJS"), v8::FunctionTemplate::New(isolate, LoadJS));
+    global->Set(v8::String::NewFromUtf8(isolate, "_ReadText"), v8::FunctionTemplate::New(isolate, ReadText));
 
     global->Set(v8::String::NewFromUtf8(isolate, "_Mread"), v8::FunctionTemplate::New(isolate, Mread));
     global->Set(v8::String::NewFromUtf8(isolate, "_Mwrite"), v8::FunctionTemplate::New(isolate, Mwrite));

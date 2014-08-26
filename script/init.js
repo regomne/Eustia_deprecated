@@ -208,7 +208,7 @@ function makeFunction(addr,callType)
 	}
 }
 
-function makeClassCallFunction(addr)
+function makeThisCallFunction(addr)
 {
 	return function()
 	{
@@ -221,11 +221,24 @@ function makeClassCallFunction(addr)
 	}
 }
 
-function makeSimpleFunction(addr,callType)
+function makeStdcallFunction(addr)
 {
 	return function()
 	{
-		var args=[addr,callType,{}];
+		var args=[addr,'stdcall',{}];
+		for(var i=0;i<arguments.length;i++)
+		{
+			args.push(arguments[i]);
+		}
+		return callFunction.apply(this,args);
+	}
+}
+
+function makeCdeclFunction(addr)
+{
+	return function()
+	{
+		var args=[addr,'cdecl',{}];
 		for(var i=0;i<arguments.length;i++)
 		{
 			args.push(arguments[i]);

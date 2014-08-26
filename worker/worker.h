@@ -10,3 +10,4 @@ extern DWORD g_CompFlagIndex;
 extern std::wstring g_dllPath;
 extern DWORD g_myWindowThreadId;
 extern DWORD g_hookWindowThreadId;
+extern DWORD g_UIThreadId;

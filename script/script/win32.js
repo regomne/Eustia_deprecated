@@ -19,7 +19,7 @@
 		var newName=name;
 		if(name.indexOf('.')!=-1)
 			newName=name.split('.')[1];
-		this[newName]=makeSimpleFunction(getAPIAddress(name),'stdcall');
+		this[newName]=makeStdcallFunction(getAPIAddress(name));
 	}
 };
 

@@ -5,11 +5,12 @@
 #include <vector>
 #include <string>
 #include <v8.h>
+#include "worker.h"
 #include "ConcurrentQueue.h"
 
 extern HWND g_hOutputEdit;
 extern v8::Isolate* g_mainIsolate;
-extern long g_isProcessed;
+//extern long g_isProcessed;
 
 struct CommandBuffer
 {
@@ -38,6 +39,12 @@ enum JSEngineMessage
     JSENGINE_EXIT,
 };
 
+enum UIProcMessage
+{
+    UIPROC_EXIT=WM_USER+777,
+    UIPROC_ADD_STRING,
+};
+
 #define CHECK_JSENGINE_MSG(para1,para2) ((para1)==((para2)^0x15238958))
 #define MAKE_JSENGINE_PARAM(para1) ((DWORD)(para1)^0x15238958)
 void LoadInitJsFiles(v8::Isolate* isolate);
@@ -51,9 +58,13 @@ public:
     {
         if (!isNotDisplay)
         {
-            int ndx = GetWindowTextLength(g_hOutputEdit);
-            SendMessage(g_hOutputEdit, EM_SETSEL, ndx, ndx);
-            SendMessage(g_hOutputEdit, EM_REPLACESEL, 0, (LPARAM)info.get());
+            //int ndx = GetWindowTextLength(g_hOutputEdit);
+            //SendMessage(g_hOutputEdit, EM_SETSEL, ndx, ndx);
+            //SendMessage(g_hOutputEdit, EM_REPLACESEL, 0, (LPARAM)info.get());
+            int len = wcslen(info.get());
+            auto buff = new wchar_t[len + 1];
+            wcscpy(buff, info.get());
+            PostThreadMessage(g_UIThreadId, UIPROC_ADD_STRING, 0, (LPARAM)buff);
         }
     }
     static void OutputInfo(wchar_t *format, ...)

@@ -3,20 +3,16 @@
     {
         this.startAddr=startAddr;
         
-        if(typeof(region)=='function')
-            this.isRegion=region;
-        else
-        {
-            this.isRegion=function(addr)
-            {
-                return region.some(function(reg){return addr>=reg[0] && addr<reg[1]});
-            }
-        }
+		this.region=region;
         
         this.newBranchProc=newBranch;
     },
 
-    
+    isRegion:function(addr)
+	{
+		return this._isInRange(this.region,addr);
+	},
+	
     getSwitch:function(switchAddr,defaultAddr,outAddr)
     {
         function popBranch()
@@ -178,7 +174,7 @@
                 else if((mo=this._instPattern.movzxPat.exec(disasm.string))!=null)
                 {
                     var cnt=buffVal.pop();
-                    jmpTabel1=mread(parseInt(mo[1]),cnt);
+                    jmpTabel1=mread(parseInt(mo[1]),cnt+1);
                 }
                 else if((mo=this._instPattern.jmpTabelPat.exec(disasm.string))!=null)
                 {
@@ -243,6 +239,67 @@
         }
         return switchTable;
     },
+	
+	getCallsFromBranch:function(addr,calls,outAddr,exceptAddr)
+	{
+		if(u16(addr)!=0x3d80 || u16(addr+7)!=0x850f)
+			throw 'unk branch start!';
+		
+		var disasm=disassemble(addr+7);
+		var mo=this._instPattern.jxxPat.exec(disasm.string);
+		var firstAddr=addr=parseInt(mo[2]);
+		
+		var state='init';
+		while(true)
+		{
+			if(!this.isRegion(addr))
+			{
+				print('branch over region. ',firstAddr);
+				break;
+			}
+			
+			disasm=disassemble(addr);
+			if(state=='init')
+			{
+				if((mo=this._instPattern.jmpPat.exec(disasm.string))!=null)
+				{
+					var dstAddr=parseInt(mo[1]);
+					if(isNaN(dstAddr))
+						throw 'cvt jmp addr failed! '+addr;
+					
+					if(this._isInRange(outAddr,dstAddr))
+					{
+						print('branch from',firstAddr,' size:',addr-firstAddr);
+						break;
+					}
+				}
+				else if((mo=this._instPattern.callPat.exec(disasm.string))!=null)
+				{
+					var dstAddr=parseInt(mo[1]);
+					if(isNaN(dstAddr))
+						throw 'cvt call addr failed! '+addr;
+					
+					if(calls[dstAddr]==undefined)
+						calls[dstAddr]=1;
+					else
+						calls[dstAddr]++;
+				}
+			}
+			
+			addr+=disasm.length;
+		}
+	},
+	
+	getAllCallsFromBranch:function(outAddr,keyDict)
+	{
+		var calls={};
+		for(var k in keyDict)
+		{
+			print(k);
+			this.getCallsFromBranch(keyDict[k],calls,outAddr);
+		}
+		return calls;
+	},
     
     _getInstType:function(disasm)
     {
@@ -275,8 +332,74 @@
         addPat:/add\s+([^,]*),(.*)/,
 		subPat:/sub\s+([^,]*),(.*)/,
         movzxPat:/movzx\s+\w+, byte ptr \[eax\+([^\]]+)\]/,
+		jmpPat:/jmp\s+(0x.*)/,
+		callPat:/call\s+(0x.*)/,
         jmpTabelPat:/jmp\s+dword ptr \[([^\+]+)\+\w+\*4\]/,
     },
+	
+	_isInRange:function(region,addr)
+	{
+		return region.some(function(reg){return addr>=reg[0] && addr<reg[1]});
+	},
 };
 
-//Analyzer.init(0x1eeddc7,[[0x1eed160,0x1efa393]],0);sw=Analyzer.getSwitch(0x1eeddc7,0x1ef43a9,0x1ef43ab);
+var findKey=makeThisCallFunction(0x45d670);
+var getMapEnd=makeThisCallFunction(0x1444ec0);
+var isItorEqual=makeThisCallFunction(0x6fd6a0);
+var Keymap=0x2d70410;
+
+function findScriptKey(key)
+{
+	function makeUnicodeStr(str)
+	{
+		var C=CryptoJS;
+		return C.enc.Latin1.stringify(C.enc.Utf16LE.parse(str));
+	}
+	
+	var val=-1;
+	
+	var outbuff=newMem(0x40);
+	findKey(Keymap,outbuff,[makeUnicodeStr(key)]);
+	var endItor=getMapEnd(Keymap,outbuff+0x20);
+	var ret=isItorEqual(outbuff,outbuff+0x20) & 0xff;
+	if(ret)
+	{
+		val=u32(outbuff+8);
+		val=u32(val+0x10);
+	}
+	deleteMem(outbuff);
+	
+	return val;
+}
+
+function getKeysFromTxt(fname)
+{
+	var ls=readText(fname).split('\r\n');
+	return ls.map(function(ele){return ele.split('\t')[0]});
+}
+
+function getKeysToAddressMap(keys,switchTable)
+{
+	var map={};
+	keys.forEach(function(ele)
+	{
+		var num=findScriptKey(ele);
+		if(num==-1)
+		{
+			print(ele,'not found');
+		}
+		else if(switchTable[num]==undefined)
+		{
+			print(ele,num,'table not found');
+		}
+		else
+		{
+			map[ele]=switchTable[num];
+		}
+	});
+	return map;
+}
+
+
+Analyzer.init(0x1eeddc7,[[0x1eed160,0x1efa393]],0);
+//sw=Analyzer.getSwitch(0x1eeddc7,0x1ef43a9,0x1ef43ab);

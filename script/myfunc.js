@@ -214,17 +214,18 @@ function HookCattack(){
 	return function(){for(var addr in table){Hooker.unHook(parseInt(addr))}};
 }
 
-function GetCnt(addr,regs)
+function GetCnt(addr,regs,dist)
 {
-	print(addr,' entered. espVal: ',u32(regs.esp),'esp+XX',u32(regs.esp+4+0x18),'esp+4',u32(regs.esp+8),'esp+8:',u32(regs.esp+8));
+	var esp=regs.esp+dist;
+	print(addr,' entered. espVal: ',u32(esp),'esp+XX',u32(esp+4+0x18),'esp+4',u32(esp+8),'esp+8:',u32(esp+8));
 	
 }
 //function HookDecHp(){Hooker.checkInfo(0xf1e270,function(regs){GetCnt(regs)})}
-function HookChkStack(addr)
+function HookChkStack(addr,dist)
 {
 	Hooker.checkInfo(addr,function(regs)
 	{
-		GetCnt(addr,regs);
+		GetCnt(addr,regs,dist);
 	});
 }
 
@@ -445,22 +446,42 @@ function GetItemObject()
 	}
 }
 
-function myCheckVal2(regs,off)
+var Checked=false;
+var CheckedBuff;
+function myCheckVal2(regs,off,addr)
 {
-	var esp=regs.esp+off;
-	var pkId=u16(esp);
+	var esp=regs.ebp+off;
+	var pkId=u32(esp) & 0xff;
 	var buff=u32(esp+4);
 	var buffLen=u16(esp+8);
-
-	if(pkId==92)
+	
+	if(!Checked)
+	{
+		CheckedBuff=mread(buff,buffLen);
+		Checked=true;
+	}
+	else
+	{
+		var newBuff=mread(buff,buffLen);
+		if(newBuff!=CheckedBuff)
+		{
+			print('not fit:',pkId);
+			printHex(CheckedBuff,CheckedBuff.length);
+			print('');
+			printHex(newBuff,newBuff.length);
+		}
+		Checked=false;
+	}
+	
+/* 	if(pkId==2)
 	{
 	print(buff,buffLen);	printMem(buff,buffLen);
-	}
+	} */
 }
-function checkVal2(addr,off){Hooker.checkInfo(addr,function(regs){myCheckVal2(regs,off)})}
+function checkVal2(addr,off){Hooker.checkInfo(addr,function(regs){myCheckVal2(regs,off,addr)})}
 
-function hookVectorPush(){Hooker.checkInfo(0x1929da3,function(regs){
-	if(regs.ecx==u32(u32(0x2aa4160)+0x30a4))
+function hookVectorPush(){Hooker.checkInfo(0x018CA523,function(regs){
+	if(regs.ecx==u32(u32(0x2b0e000)+0x30a4))
 	{
 		CheckVal(regs);
 	}

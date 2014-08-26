@@ -5,6 +5,7 @@ var ShortCmdTable={
 	cm1: 'mm1=getMemoryBlocks()',
 	cm2: 'mm2=getMemoryBlocks();rslt=getNewExecuteMemory(mm1,mm2);displayMemInfo(rslt.newExes)',
 	lf: 'load("myfunc.js")',
+	lq: 'load("script/quickfunc.js")',
 	us: 'printOneDisasm(parseInt("{0}",16))',
 	u: function(addr)
 		{

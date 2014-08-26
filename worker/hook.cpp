@@ -23,6 +23,7 @@ HINSTANCE g_hModule;
 DWORD g_CompFlagIndex;
 DWORD g_myWindowThreadId;
 DWORD g_hookWindowThreadId;
+DWORD g_UIThreadId;
 
 wstring g_dllPath;
 
@@ -235,7 +236,7 @@ int WINAPI WindowThread(LPARAM _)
 int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
 {
     g_hModule = (HINSTANCE)hDllHandle;
-    HANDLE val;
+    //HANDLE val;
     //DisableThreadLibraryCalls((HMODULE)hDllHandle);
 
     switch(dwReason)
@@ -265,37 +266,37 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
             MessageBox(0, L"Can't get dll path", 0, 0);
         }
 
-        g_CompFlagIndex = TlsAlloc();
-        if(g_CompFlagIndex==TLS_OUT_OF_INDEXES)
-        {
-            DBGOUT(("tls alloc faild, error: %d",GetLastError()));
-            return FALSE;
-        }
+        //g_CompFlagIndex = TlsAlloc();
+        //if(g_CompFlagIndex==TLS_OUT_OF_INDEXES)
+        //{
+        //    DBGOUT(("tls alloc faild, error: %d",GetLastError()));
+        //    return FALSE;
+        //}
 
         // fall through        
     case DLL_THREAD_ATTACH:
-        val=TlsGetValue(g_CompFlagIndex);
-        if(val==0)
-        {
-            val = CreateEvent(0, 0, 0, 0);
-            //DBGOUT(("thread entered. tid:%d, eve: %x",GetCurrentThreadId(),val));
-            TlsSetValue(g_CompFlagIndex,val);
-        }
+        //val=TlsGetValue(g_CompFlagIndex);
+        //if(val==0)
+        //{
+        //    val = CreateEvent(0, 0, 0, 0);
+        //    //DBGOUT(("thread entered. tid:%d, eve: %x",GetCurrentThreadId(),val));
+        //    TlsSetValue(g_CompFlagIndex,val);
+        //}
         break;
     case DLL_THREAD_DETACH:
-        val=(long*)TlsGetValue(g_CompFlagIndex);
-        if(val)
-        {
-            //DBGOUT(("thread exit. tid:%d",GetCurrentThreadId()));
-            CloseHandle(val);
-        }
-        if (GetCurrentThreadId() == g_hookWindowThreadId)
-        {
-            MessageBox(0, L"main thread exited!", 0, 0);
-        }
+        //val=(long*)TlsGetValue(g_CompFlagIndex);
+        //if(val)
+        //{
+        //    //DBGOUT(("thread exit. tid:%d",GetCurrentThreadId()));
+        //    CloseHandle(val);
+        //}
+        //if (GetCurrentThreadId() == g_hookWindowThreadId)
+        //{
+        //    MessageBox(0, L"main thread exited!", 0, 0);
+        //}
         break;
     case DLL_PROCESS_DETACH:
-        TlsFree(g_CompFlagIndex);
+        //TlsFree(g_CompFlagIndex);
         RemoveAllHooks();
         break;
     }

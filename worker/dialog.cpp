@@ -21,7 +21,7 @@ using namespace v8;
 using namespace std;
 
 static const bool g_DisplayRslt = true; //是否显示每条js指令的返回值
-long g_isProcessed = 0;
+//long g_isProcessed = 0;
 
 static CommandBuffer g_CmdBuffer; //js输入缓冲
 static CommandBuffer g_ShortCmdBuffer; //短命令缓冲
@@ -91,6 +91,28 @@ void ProcessEngineMsg(MSG* msg)
         //FreeLibrary(g_hModule);
     }
 
+}
+DWORD WINAPI UIProc(LPARAM param)
+{
+    MSG msg;
+    while (GetMessage(&msg, (HWND)-1, 0, 0))
+    {
+        if (msg.message == UIPROC_ADD_STRING)
+        {
+            if (msg.wParam == 0)
+            {
+                int ndx = GetWindowTextLength(g_hOutputEdit);
+                SendMessage(g_hOutputEdit, EM_SETSEL, ndx, ndx);
+                SendMessage(g_hOutputEdit, EM_REPLACESEL, 0, msg.lParam);
+                delete[](wchar_t*)msg.lParam;
+            }
+        }
+        else if (msg.message == UIPROC_EXIT)
+        {
+            break;
+        }
+    }
+    return 0;
 }
 
 DWORD WINAPI CommandProc(LPARAM param)
@@ -251,29 +273,6 @@ LRESULT WINAPI WndProc(
     case WM_COMMAND:
         switch (wParam & 0xffff)
         {
-            //case IDC_CHECKMEM1:
-            //{
-            //                      DEF_CONST_SHARE_STRING(cmd, L"mm1=getMemoryBlocks()");
-            //                      OutputWriter::OutputInfo(L"Working...\n");
-            //                      EnableWindow(hCheck1, FALSE);
-            //                      EnableWindow(hCheck2, FALSE);
-            //                      //OutputWriter::ChangeDisplay(false);
-            //                      CommandQueue.Enqueue(cmd);
-            //}
-            //    break;
-            //case IDC_CHECKMEM2:
-            //{
-            //                      DEF_CONST_SHARE_STRING(cmd, L"mm2=getMemoryBlocks();rslt=getNewExecuteMemory(mm1,mm2);");
-            //                      OutputWriter::OutputInfo(L"Working...\n");
-            //                      EnableWindow(hCheck1, FALSE);
-            //                      EnableWindow(hCheck2, FALSE);
-            //                      //OutputWriter::ChangeDisplay(false);
-            //                      CommandQueue.Enqueue(cmd);
-
-            //                      DEF_CONST_SHARE_STRING(cmd2, L"displayObject(rslt)");
-            //                      CommandQueue.Enqueue(cmd2);
-            //}
-            //    break;
         case IDOK:
             ReadCmdAndExecute(GetFocus());
             break;
@@ -295,7 +294,7 @@ LRESULT WINAPI WndProc(
         SetWindowLongPtr(hInputEdit, GWL_WNDPROC, (LONG)NewEditProc);
         SetWindowLongPtr(hInputShortEdit, GWL_WNDPROC, (LONG)NewEditProc);
 
-        //CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, (LPVOID)hwnd, 0, 0);
+        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, 0, 0, &g_UIThreadId);
         PostThreadMessage(g_hookWindowThreadId, JSENGINE_INIT, 0, MAKE_JSENGINE_PARAM(0));
         //commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, &commandThreadId);
         //if (!commandThread)
@@ -311,6 +310,7 @@ LRESULT WINAPI WndProc(
         //exitCommand.compFlag = 0;
         //CommandQueue.Enqueue(exitCommand);
         PostThreadMessage(g_hookWindowThreadId, JSENGINE_EXIT, 0, MAKE_JSENGINE_PARAM(0));
+        PostThreadMessage(g_UIThreadId, UIPROC_EXIT, 0, 0);
         EndDialog(hwnd, 0);
         break;
     default:
