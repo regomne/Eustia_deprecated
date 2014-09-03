@@ -11,6 +11,7 @@
 #include "ConcurrentQueue.h"
 #include "patcher.h"
 #include "../gs/ToolFun.h"
+#include "ThreadData.h"
 #include "jsInterfaces.h"
 #include "resource.h"
 #include "dialog.h"
@@ -266,37 +267,21 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
             MessageBox(0, L"Can't get dll path", 0, 0);
         }
 
-        //g_CompFlagIndex = TlsAlloc();
-        //if(g_CompFlagIndex==TLS_OUT_OF_INDEXES)
-        //{
-        //    DBGOUT(("tls alloc faild, error: %d",GetLastError()));
-        //    return FALSE;
-        //}
+        if (!ThreadData::Init())
+        {
+            MessageBox(0, L"Can't init tls data.", 0, 0);
+            return FALSE;
+        }
 
-        // fall through        
+        break;
     case DLL_THREAD_ATTACH:
-        //val=TlsGetValue(g_CompFlagIndex);
-        //if(val==0)
-        //{
-        //    val = CreateEvent(0, 0, 0, 0);
-        //    //DBGOUT(("thread entered. tid:%d, eve: %x",GetCurrentThreadId(),val));
-        //    TlsSetValue(g_CompFlagIndex,val);
-        //}
+        ThreadData::EnterThread();
         break;
     case DLL_THREAD_DETACH:
-        //val=(long*)TlsGetValue(g_CompFlagIndex);
-        //if(val)
-        //{
-        //    //DBGOUT(("thread exit. tid:%d",GetCurrentThreadId()));
-        //    CloseHandle(val);
-        //}
-        //if (GetCurrentThreadId() == g_hookWindowThreadId)
-        //{
-        //    MessageBox(0, L"main thread exited!", 0, 0);
-        //}
+        ThreadData::ExitThread();
         break;
     case DLL_PROCESS_DETACH:
-        //TlsFree(g_CompFlagIndex);
+        ThreadData::Release();
         RemoveAllHooks();
         break;
     }

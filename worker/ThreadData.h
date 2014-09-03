@@ -1,45 +1,95 @@
-#if 0
+
 #pragma once
 
 #include <windows.h>
-#include <v8.h>
+#include "../gs/ToolFun.h"
 
 class ThreadData
 {
     struct Data1
     {
-        HANDLE syncFlag_;
-        v8::Isolate* v8isolate_;
+        int enterFlag;
     };
 
     static int tlsIndex_;
 
-    static void InitData1(Data1* data)
+    static Data1* GetData()
     {
-        data->syncFlag_ = CreateEvent(0, 0, 0, 0);
-        data->v8isolate_ = 0;
+        auto data = (Data1*)TlsGetValue(tlsIndex_);
+        if (data == 0)
+        {
+            data = new Data1;
+
+            data->enterFlag = 0;
+
+            if (TlsSetValue(tlsIndex_, data) == 0)
+            {
+                DBGOUT(("Can't set tls value, err: %d", GetLastError()));
+                delete data;
+                data = 0;
+            }
+        }
+        return data;
     }
 
-    static void ReleaseData1(Data1* data)
+    static void ReleaseData()
     {
-        CloseHandle(data->syncFlag_);
-        if (data->v8isolate_)
+        auto data = (Data1*)TlsGetValue(tlsIndex_);
+        if (data)
         {
-            auto isolate = data->v8isolate_;
-            v8::HandleScope scope(isolate);
-            auto context = isolate->GetCurrentContext();
-
-            context->Exit();
-            isolate->Exit();
-            isolate->Dispose();
+            delete data;
+            TlsSetValue(tlsIndex_, 0);
         }
     }
 
 public:
 
-    static bool Init();
+    static bool Init()
+    {
+        tlsIndex_ = TlsAlloc();
+        if (tlsIndex_ == TLS_OUT_OF_INDEXES)
+        {
+            DBGOUT(("tls alloc faild, error: %d", GetLastError()));
+            return false;
+        }
+        return true;
+    }
 
-    static HANDLE GetSyncFlag();
-    static v8::Isolate* GetIsolate();
+    static void EnterThread()
+    {
+        GetData();
+    }
+
+    static void ExitThread()
+    {
+        auto data = (Data1*)TlsGetValue(tlsIndex_);
+        if (data)
+        {
+            delete data;
+        }
+    }
+
+    static void Release()
+    {
+        TlsFree(tlsIndex_);
+    }
+
+    static int GetEnterFlag()
+    {
+        auto data = GetData();
+
+        return data->enterFlag;
+    }
+
+    static bool SetEnterFlag(int flag)
+    {
+        auto data = GetData();
+        data->enterFlag = flag;
+        if (!TlsSetValue(tlsIndex_, data))
+        {
+            DBGOUT(("Can't set tls value, err:%d", GetLastError()));
+            return false;
+        }
+        return true;
+    }
 };
-#endif

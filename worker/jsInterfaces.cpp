@@ -37,17 +37,17 @@ if (args.Length() < cnt)\
     return; \
 }
 
-const char* ToCString(const v8::String::Utf8Value& value) {
+static const char* ToCString(const v8::String::Utf8Value& value) {
     return *value ? *value : "<string conversion failed>";
 }
 
-const wchar_t* ToWString(const v8::String::Value& value)
+static const wchar_t* ToWString(const v8::String::Value& value)
 {
     auto s = (wchar_t*)*value;
     return s ? s : L"<string conversion failed>";
 }
 
-vector<int> ConvertIntArray(Handle<Array> jsVal)
+static vector<int> ConvertIntArray(Handle<Array> jsVal)
 {
     auto jsArr = jsVal.As<Array>();
     vector<int> newVec;
@@ -57,6 +57,8 @@ vector<int> ConvertIntArray(Handle<Array> jsVal)
     }
     return newVec;
 }
+
+
 
 static void SetProperty(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
@@ -642,6 +644,28 @@ bool ExecuteString(v8::Isolate* isolate,
     bool report_exceptions)
 {
     v8::HandleScope handle_scope(isolate);
+    auto result = ExecuteStringWithRet(isolate, source, name, report_exceptions);
+    if (result.IsEmpty())
+    {
+        return false;
+    }
+    if (print_result && !result->IsUndefined()) {
+        // If all went well and the result wasn't undefined then print
+        // the returned value.
+        v8::String::Value str(result);
+        auto cstr = ToWString(str);
+        OutputWriter::OutputInfo(L"%s\n", cstr);
+    }
+    return true;
+}
+
+Handle<Value> ExecuteStringWithRet(v8::Isolate* isolate,
+    v8::Handle<v8::String> source,
+    v8::Handle<v8::Value> name,
+    bool report_exceptions)
+{
+    v8::Handle<v8::Value> result;
+    //v8::HandleScope handle_scope(isolate);
     v8::TryCatch try_catch;
     v8::ScriptOrigin origin(name);
     v8::Handle<v8::Script> script = v8::Script::Compile(source, &origin);
@@ -649,27 +673,20 @@ bool ExecuteString(v8::Isolate* isolate,
         // Print errors that happened during compilation.
         if (report_exceptions)
             ReportException(isolate, &try_catch);
-        return false;
+        return result;
     }
     else {
-        v8::Handle<v8::Value> result = script->Run();
+        result = script->Run();
         if (result.IsEmpty()) {
             assert(try_catch.HasCaught());
             // Print errors that happened during execution.
             if (report_exceptions)
                 ReportException(isolate, &try_catch);
-            return false;
+            return result;
         }
         else {
             assert(!try_catch.HasCaught());
-            if (print_result && !result->IsUndefined()) {
-                // If all went well and the result wasn't undefined then print
-                // the returned value.
-                v8::String::Value str(result);
-                auto cstr = ToWString(str);
-                OutputWriter::OutputInfo(L"%s\n", cstr);
-            }
-            return true;
+            return result;
         }
     }
 }

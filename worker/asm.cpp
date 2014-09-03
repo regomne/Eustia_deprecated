@@ -1,5 +1,6 @@
 #include "asm.h"
 #include "../gs/ToolFun.h"
+#include "patcher.h"
 
 using namespace std;
 
@@ -82,3 +83,52 @@ BOOL CallFunction(DWORD funcAddr, FunctionCallType callType, vector<DWORD>& args
     return TRUE;
 }
 
+BOOL CreateNewFunction(int funcId, int argsCnt, FunctionCallType callType, void** funcPtr)
+{
+    BYTE* funcBuff = new BYTE[100];
+    if (!funcBuff)
+    {
+        return FALSE;
+    }
+
+    DWORD oldProt;
+    if (!VirtualProtect(funcBuff, 100, PAGE_EXECUTE_READWRITE, &oldProt))
+    {
+        delete[] funcBuff;
+        DBGOUT(("Can't change mem protect. addr:%x",funcBuff));
+        return FALSE;
+    }
+
+    auto p = funcBuff;
+    *(DWORD*)p = 0x0424448d; //lea eax,[esp+4]
+    p += 4;
+    *p = 0x68;
+    *(DWORD*)(p + 1) = argsCnt; //push argsCnt
+    p += 5;
+    *p++ = 50; //push eax
+    *p = 0x68;
+    *(DWORD*)(p + 1) = funcId; //push funcId
+    p += 5;
+    *p = 0xe8;
+    *(DWORD*)(p + 1) = (BYTE*)CallbackStub - (p + 5); //call CallbackStub
+    p += 5;
+    if (callType == FunctionCallTypeCdecl)
+    {
+        *p++ = 0xc3; //ret
+    }
+    else if (callType == FunctionCallTypeStdcall)
+    {
+        *p = 0xc2;
+        *(WORD*)(p + 1) = argsCnt * 4; //retn XX
+        p += 3;
+    }
+    else
+    {
+        delete[] funcBuff;
+        DBGOUT(("unknown function call type."));
+        return FALSE;
+    }
+    
+    *funcPtr = funcBuff;
+    return TRUE;
+}

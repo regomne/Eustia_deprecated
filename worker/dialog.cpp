@@ -70,16 +70,18 @@ void ProcessEngineMsg(MSG* msg)
             context->Enter();
             LoadInitJsFiles(g_mainIsolate);
         }
-        InitializeCriticalSection(&g_GetInfoLock);
+        InitializeCriticalSection(&g_v8ThreadLock);
     }
     else if (msg->message == JSENGINE_RUNCMD)
     {
+        EnterCriticalSection(&g_v8ThreadLock);
         HandleScope scope(g_mainIsolate);
         auto cmd = (wchar_t*)msg->wParam;
 
         auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
         ExecuteString(g_mainIsolate, source, String::NewFromUtf8(g_mainIsolate, "console_main"), true, true);
         delete[] cmd;
+        LeaveCriticalSection(&g_v8ThreadLock);
     }
     else if (msg->message == JSENGINE_EXIT)
     {
@@ -87,7 +89,7 @@ void ProcessEngineMsg(MSG* msg)
         g_mainIsolate->GetCurrentContext()->Exit();
         g_mainIsolate->Exit();
         g_mainIsolate->Dispose();
-        DeleteCriticalSection(&g_GetInfoLock);
+        DeleteCriticalSection(&g_v8ThreadLock);
         //FreeLibrary(g_hModule);
     }
 

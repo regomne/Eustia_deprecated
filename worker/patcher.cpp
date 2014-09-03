@@ -12,13 +12,14 @@
 #include "../gs/toolfun.h"
 #include "patcher.h"
 #include "jsInterfaces.h"
+#include "ThreadData.h"
 
 
 using namespace std;
 using namespace v8;
 
 list<HookSrcObject> g_HookList;
-CRITICAL_SECTION g_GetInfoLock;
+CRITICAL_SECTION g_v8ThreadLock;
 
 void HOOKFUNC MyGetInfo(Registers* regs,PVOID srcAddr)
 {
@@ -78,7 +79,12 @@ BOOL CheckInfoHook(PVOID srcAddress)
 
 void HOOKFUNC MyGetInfo2(Registers* regs, PVOID srcAddr)
 {
-    EnterCriticalSection(&g_GetInfoLock);
+    auto entered = ThreadData::GetEnterFlag()&ENTER_FLAG_CHECK_INFO;
+    if (entered)
+        return;
+    ThreadData::SetEnterFlag(entered|ENTER_FLAG_CHECK_INFO);
+
+    EnterCriticalSection(&g_v8ThreadLock);
 
     int curId = GetCurrentThreadId();
     if (curId != g_hookWindowThreadId)
@@ -86,21 +92,24 @@ void HOOKFUNC MyGetInfo2(Registers* regs, PVOID srcAddr)
         g_mainIsolate->Enter();
     }
 
-    HandleScope scope(g_mainIsolate);
-    auto cmd = new wchar_t[100];
-    swprintf_s(cmd, 100, L"Hooker.dispatchCheckFunction(%d,%d);", regs, srcAddr);
+    {
+        HandleScope scope(g_mainIsolate);
+        wchar_t cmd[100];
+        swprintf_s(cmd, 100, L"Hooker.dispatchCheckFunction(%d,%d)", regs, srcAddr);
 
-    auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
-    delete[] cmd;
-    auto name = String::NewFromUtf8(g_mainIsolate, "hooker");
-    ExecuteString(g_mainIsolate, source, name, true, true);
+        auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
+        auto name = String::NewFromUtf8(g_mainIsolate, "hooker");
+        auto ret=ExecuteStringWithRet(g_mainIsolate, source, name, true);
+
+    }
 
     if (curId != g_hookWindowThreadId)
     {
         g_mainIsolate->Exit();
     }
 
-    LeaveCriticalSection(&g_GetInfoLock);
+    LeaveCriticalSection(&g_v8ThreadLock);
+    ThreadData::SetEnterFlag(entered&(~ENTER_FLAG_CHECK_INFO));
 }
 
 BOOL CheckInfoHook2(PVOID srcAddress)
@@ -150,4 +159,41 @@ void RemoveAllHooks()
         UnHook32(&src);
         return true;
     });
+}
+
+DWORD __stdcall CallbackStub(int funcId, DWORD* argsPtr, int argCnt)
+{
+    //auto entered = ThreadData::GetEnterFlag()&ENTER_FLAG_CHECK_INFO;
+    //if (entered)
+    //    return 0;
+    //ThreadData::SetEnterFlag(entered | ENTER_FLAG_CHECK_INFO);
+
+    EnterCriticalSection(&g_v8ThreadLock);
+
+    int curId = GetCurrentThreadId();
+    if (curId != g_hookWindowThreadId)
+    {
+        g_mainIsolate->Enter();
+    }
+
+    DWORD retVal = 0;
+    {
+        HandleScope scope(g_mainIsolate);
+        wchar_t cmd[100];
+        swprintf_s(cmd, 100, L"Callback._dispatchFunction(%d,%d,%d)", funcId, argsPtr, argCnt);
+        auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
+        auto name = String::NewFromUtf8(g_mainIsolate, "callback");
+        auto ret = ExecuteStringWithRet(g_mainIsolate, source, name, true);
+        if (!ret.IsEmpty())
+            retVal = ret->Uint32Value();
+    }
+
+    if (curId != g_hookWindowThreadId)
+    {
+        g_mainIsolate->Exit();
+    }
+
+    LeaveCriticalSection(&g_v8ThreadLock);
+    //ThreadData::SetEnterFlag(entered&(~ENTER_FLAG_CHECK_INFO));
+    return retVal;
 }

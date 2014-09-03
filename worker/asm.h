@@ -25,4 +25,4 @@ enum RegisterFlag
 };
 
 BOOL CallFunction(DWORD funcAddr, FunctionCallType callType, std::vector<DWORD>& args, DWORD regFlags, Registers* regs, DWORD* retVal);
-
+BOOL CreateNewFunction(int funcId, int argsCnt, FunctionCallType callType, void** funcPtr);
