@@ -66,12 +66,12 @@ function getNewExecuteMemory(blocks1,blocks2)
 		{
 			for(;j<exe2.length;j++)
 			{
-				if(exe2[j].baseAddress<addr)
+				while(j<exe2.length && exe2[j].baseAddress<addr)
 				{
 					newExes.push(exe2[j]);
 					j++;
 				}
-				else if(exe2[j].baseAddress==addr)
+				if(exe2[j].baseAddress==addr)
 				{
 					if(exe2[j].regionSize!=size)
 					{

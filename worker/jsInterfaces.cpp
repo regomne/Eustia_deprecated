@@ -115,7 +115,7 @@ static void DumpMemory(const v8::FunctionCallbackInfo<v8::Value>& args)
     String::Value fileName(args[3]);
 
     auto ret=DumpMemory(processHandle, startAddr, size, (wchar_t*)*fileName);
-    args.GetReturnValue().Set((bool)ret);
+    args.GetReturnValue().Set(ret!=FALSE);
 }
 
 static void SuspendAllThreads(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -446,6 +446,35 @@ static void CheckInfoHook(const v8::FunctionCallbackInfo<v8::Value>& args)
     return;
 }
 
+static void NewCallback(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(3);
+
+    auto funcId = args[0]->Uint32Value();
+    auto argsCnt = args[1]->Uint32Value();
+    auto funcType = (FunctionCallType)args[2]->Uint32Value();
+
+    void* newFunc;
+    if (!CreateNewFunction(funcId, argsCnt, funcType, &newFunc))
+    {
+        THROW_EXCEPTION(L"Can't create function.");
+    }
+    else
+    {
+        args.GetReturnValue().Set((uint32_t)newFunc);
+    }
+}
+
+static void DeleteMem(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
+    auto mem = (wchar_t*)args[0]->Uint32Value();
+    delete[] mem;
+}
+
 static void Unhook(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     if (args.Length() != 1 || !args[0]->IsUint32())
@@ -573,24 +602,39 @@ Handle<Context> InitV8()
     //HandleScope scope(isolate);
     Handle<ObjectTemplate> global = ObjectTemplate::New(isolate);
 
-    global->Set(v8::String::NewFromUtf8(isolate, "_SetProperty"), v8::FunctionTemplate::New(isolate, SetProperty));
+    struct FuncList
+    {
+        char* funcName;
+        FunctionCallback callBack;
+    } funcList[] = {
+        { "_SetProperty", SetProperty },
 
-    global->Set(v8::String::NewFromUtf8(isolate, "_Print"), v8::FunctionTemplate::New(isolate, Print));
-    global->Set(v8::String::NewFromUtf8(isolate, "_LoadJS"), v8::FunctionTemplate::New(isolate, LoadJS));
-    global->Set(v8::String::NewFromUtf8(isolate, "_ReadText"), v8::FunctionTemplate::New(isolate, ReadText));
+        { "_Print", Print },
+        { "_LoadJS", LoadJS },
+        { "_ReadText", ReadText },
 
-    global->Set(v8::String::NewFromUtf8(isolate, "_Mread"), v8::FunctionTemplate::New(isolate, Mread));
-    global->Set(v8::String::NewFromUtf8(isolate, "_Mwrite"), v8::FunctionTemplate::New(isolate, Mwrite));
-    global->Set(v8::String::NewFromUtf8(isolate, "_GetMemoryBlocks"), v8::FunctionTemplate::New(isolate, GetMemoryBlocks));
-    global->Set(v8::String::NewFromUtf8(isolate, "_DumpMemory"), v8::FunctionTemplate::New(isolate, DumpMemory));
-    global->Set(v8::String::NewFromUtf8(isolate, "_SuspendAllThreads"), v8::FunctionTemplate::New(isolate, SuspendAllThreads));
-    global->Set(v8::String::NewFromUtf8(isolate, "_ResumeAllThreads"), v8::FunctionTemplate::New(isolate, ResumeAllThreads));
+        { "_Mread", Mread },
+        { "_Mwrite", Mwrite },
+        { "_GetMemoryBlocks", GetMemoryBlocks },
+        { "_DumpMemory", DumpMemory },
+        { "_SuspendAllThreads", SuspendAllThreads },
+        { "_ResumeAllThreads", ResumeAllThreads },
 
-    global->Set(v8::String::NewFromUtf8(isolate, "_CheckInfoHook"), v8::FunctionTemplate::New(isolate, CheckInfoHook));
-    global->Set(v8::String::NewFromUtf8(isolate, "_Unhook"), v8::FunctionTemplate::New(isolate, Unhook));
-    global->Set(v8::String::NewFromUtf8(isolate, "_GetAPIAddress"), v8::FunctionTemplate::New(isolate, GetAPIAddress));
-    global->Set(v8::String::NewFromUtf8(isolate, "_CallFunction"), v8::FunctionTemplate::New(isolate, CallFunction));
-    global->Set(v8::String::NewFromUtf8(isolate, "_Disassemble"), v8::FunctionTemplate::New(isolate, Disassmble));
+        { "_CheckInfoHook", CheckInfoHook },
+        { "_Unhook", Unhook },
+        { "_GetAPIAddress", GetAPIAddress },
+        { "_CallFunction", CallFunction },
+        { "_NewCallback", NewCallback },
+        { "_DeleteMem", DeleteMem },
+
+        { "_Disassemble", Disassmble },
+
+    };
+
+    for (int i = 0; i < sizeof(funcList) / sizeof(FuncList); i++)
+    {
+        global->Set(String::NewFromUtf8(isolate, funcList[i].funcName), FunctionTemplate::New(isolate, funcList[i].callBack));
+    }
 
     global->Set(v8::String::NewFromUtf8(isolate, "_DllPath"), v8::String::NewFromTwoByte(isolate, (uint16_t*)g_dllPath.c_str()));
     global->Set(v8::String::NewFromUtf8(isolate, "_MyWindowThreadId"), Integer::NewFromUnsigned(isolate,g_myWindowThreadId));

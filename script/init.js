@@ -256,7 +256,7 @@ var Convert={
 	}
 };
 
-var Hooker={
+var Hooker=Hooker || {
 	dispatchDict:{},
 	checkInfo:function(addr,hookfunc)
 	{
@@ -321,6 +321,36 @@ var Hooker={
 		else if(LogLevel>=2)
 		{
 			print('unk srcAddr in Hooker: '+srcAddr);
+		}
+	}
+};
+
+var Callback=Callback || {
+	_dispatchDict:{length:0},
+	_addrDict:{},
+	_dispatchFunction:function(id,argsPtr,argCnt)
+	{
+		if(this._dispatchDict[id]==undefined)
+			print('unk srcAddr in Callback: '+id);
+		else
+		{
+			var func=this._dispatchDict[id];
+			var args=Convert.unpack(mread(argsPtr,argCnt*4),'I'.repeat(argCnt));
+			return func.apply(this,args);
+		}
+	},
+	newFunc:function(func,argCnt,type)
+	{
+		var newId=this._dispatchDict.length++;
+		this._dispatchDict[newId]=func;
+		return newCallback(newId,argCnt,type);
+	},
+	deleteFunc:function(addr)
+	{
+		deleteMem(addr);
+		if(this._addrDict[addr]!=undefined)
+		{
+			delete this._dispatchDict[this._addrDict[addr]];
 		}
 	}
 };

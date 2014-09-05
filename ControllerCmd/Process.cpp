@@ -141,7 +141,7 @@ BOOL SuspendAllThreads(int processId, vector<int>& ignoreIdList, vector<int>& th
     {
         if (te32.th32OwnerProcessID == owner)
         {
-            for (int i = 0; i < ignoreIdList.size(); i++)
+            for (DWORD i = 0; i < ignoreIdList.size(); i++)
             {
                 if (te32.th32ThreadID == ignoreIdList[i])
                     goto _Next1;
