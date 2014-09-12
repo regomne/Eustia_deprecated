@@ -105,7 +105,7 @@ BOOL CreateNewFunction(int funcId, int argsCnt, FunctionCallType callType, void*
     *p = 0x68;
     *(DWORD*)(p + 1) = argsCnt; //push argsCnt
     p += 5;
-    *p++ = 50; //push eax
+    *p++ = 0x50; //push eax
     *p = 0x68;
     *(DWORD*)(p + 1) = funcId; //push funcId
     p += 5;

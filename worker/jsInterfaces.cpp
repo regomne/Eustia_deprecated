@@ -587,7 +587,7 @@ static void LoadJS(const v8::FunctionCallbackInfo<v8::Value>& args) {
             source,
             v8::String::NewFromTwoByte(args.GetIsolate(), *file),
             false,
-            false)) {
+            true)) {
             args.GetIsolate()->ThrowException(
                 v8::String::NewFromUtf8(args.GetIsolate(), "Error executing file"));
             return;
