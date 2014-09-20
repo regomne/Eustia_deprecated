@@ -75,6 +75,8 @@ void ProcessEngineMsg(MSG* msg)
     else if (msg->message == JSENGINE_RUNCMD)
     {
         EnterCriticalSection(&g_v8ThreadLock);
+        
+        g_mainIsolate->SetStackLimit(1);
         HandleScope scope(g_mainIsolate);
         auto cmd = (wchar_t*)msg->wParam;
 

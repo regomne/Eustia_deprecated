@@ -90,12 +90,13 @@ void HOOKFUNC MyGetInfo2(Registers* regs, PVOID srcAddr)
     if (curId != g_hookWindowThreadId)
     {
         g_mainIsolate->Enter();
+        g_mainIsolate->SetStackLimit(1);
     }
 
     {
         HandleScope scope(g_mainIsolate);
         wchar_t cmd[100];
-        swprintf_s(cmd, 100, L"Hooker.dispatchCheckFunction(%d,%d)", regs, srcAddr);
+        swprintf_s(cmd, 100, L"Hooker.dispatchCheckFunction(%d,%d);", regs, srcAddr);
 
         auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
         auto name = String::NewFromUtf8(g_mainIsolate, "hooker");
