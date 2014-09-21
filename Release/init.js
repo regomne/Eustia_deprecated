@@ -15,7 +15,7 @@ function print()
 	return _Print.apply(this,arguments);
 }
 
-function load(fname)
+function genFname(fname)
 {
 	if(fname.length>2 &&
 		fname[1]!=':' &&
@@ -23,6 +23,12 @@ function load(fname)
 	{
 		fname=scriptPath.slice(-1)[0]+fname;
 	}
+	return fname;
+}
+
+function load(fname)
+{
+	fname=genFname(fname);
 	if(LogLevel>=4)
 	{
 		print(fname,'loading...');

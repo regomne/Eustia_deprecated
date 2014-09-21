@@ -44,3 +44,15 @@ setProperty(String.prototype,'startswith',function(s)
 {
 	return (this.substring(0,s.length)==s);
 },'de');
+
+setProperty(String.prototype,'decode',function()
+{
+	var C=CryptoJS;
+	return C.enc.Utf16LE.stringify(C.enc.Latin1.parse(this));
+},'de');
+
+setProperty(String.prototype,'encode',function()
+{
+	var C=CryptoJS;
+	return C.enc.Latin1.stringify(C.enc.Utf16LE.parse(this));
+},'de');

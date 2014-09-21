@@ -1,6 +1,6 @@
 #include "jsInterfaces.h"
 
-#include <v8.h>
+#include <include/v8.h>
 #include <assert.h>
 #include <memory>
 #include <algorithm>
@@ -71,7 +71,7 @@ static void SetProperty(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
 
     auto obj = args[0].As<Object>();
-    obj->Set(args[1], args[2], (PropertyAttribute)args[3]->Uint32Value());
+    obj->ForceSet(args[1], args[2], (PropertyAttribute)args[3]->Uint32Value());
 }
 
 static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -564,6 +564,60 @@ static void ReadText(const v8::FunctionCallbackInfo<v8::Value>& args) {
     args.GetReturnValue().Set(source);
 }
 
+static void WriteText(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(3);
+
+    String::Value fname(args[0]);
+    auto buff = args[1]->ToString();
+    auto isTwoByte = args[2]->Uint32Value();
+    
+    if (*fname == NULL)
+    {
+        THROW_EXCEPTION(L"error file name");
+        return;
+    }
+
+    auto fp=_wfopen((wchar_t*)*fname, L"wb");
+    if (fp == NULL)
+    {
+        THROW_EXCEPTION(L"Error opening file");
+        return;
+    }
+
+    int ret;
+    BYTE tmp[0x1000];
+    if (isTwoByte)
+    {
+        fwrite("\xff\xfe", 1, 2, fp);
+        int left = buff->Length()*2;
+        int start = 0;
+        while (left>0)
+        {
+            int curWriteBytes = left > 0x1000 ? 0x1000 : left;
+            buff->Write((uint16_t*)tmp, start/2, curWriteBytes/2);
+            curWriteBytes = fwrite(tmp, 1, curWriteBytes, fp);
+            start += curWriteBytes;
+            left -= curWriteBytes;
+        }
+    }
+    else
+    {
+        int left = buff->Length();
+        int start = 0;
+        while (left > 0)
+        {
+            int curWriteBytes = left > 0x1000 ? 0x1000 : left;
+            buff->WriteOneByte(tmp, start, curWriteBytes);
+            curWriteBytes = fwrite(tmp, 1, curWriteBytes, fp);
+            start += curWriteBytes;
+            left -= curWriteBytes;
+        }
+    }
+
+    fclose(fp);
+}
 
 // The callback that is invoked by v8 whenever the JavaScript 'load'
 // function is called.  Loads, compiles and executes its argument
@@ -612,6 +666,7 @@ Handle<Context> InitV8()
         { "_Print", Print },
         { "_LoadJS", LoadJS },
         { "_ReadText", ReadText },
+        { "_WriteText", WriteText },
 
         { "_Mread", Mread },
         { "_Mwrite", Mwrite },

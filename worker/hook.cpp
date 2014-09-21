@@ -1,5 +1,5 @@
 #include <windows.h>
-#include <v8.h>
+//#include <include/v8.h>
 #include <Commctrl.h>
 #include <memory>
 #include <string>
@@ -100,101 +100,101 @@ int DispatchInstruction(Handle<Context> context, InstructionHeader* instHdr, BYT
     return 0;
 }
 
-DWORD WINAPI WaitingProc(LPARAM param)
-{
-
-    int rslt = Communicator.Init(0); //Waiting for start.
-    if (MYFAILED(rslt))
-    {
-        //mbox?
-        DBGOUT(("no init"));
-        return 0;
-    }
-
-    auto isolate = Isolate::New();
-    isolate->Enter();
-
-    HandleScope handle_scope(isolate);
-
-    auto context = InitV8();
-    context->Enter();
-
-
-    DBGOUT(("Inited"));
-
-    while (true)
-    {
-        DWORD readBytes;
-        InstructionHeader instHdr;
-        BYTE* inst;
-        rslt = Communicator.Read(&instHdr, sizeof(instHdr), &readBytes);
-        if (MYFAILED(rslt) || readBytes != sizeof(instHdr)) //Wait for an instruction
-        {
-            if (GetLastError() != ERROR_BROKEN_PIPE)
-            {
-                DBGOUT(("no read1"));
-            }
-            else
-            {
-                DBGOUT(("server closed the pipe."));
-            }
-            break;
-        }
-
-        DBGOUT(("Instruction received. Length: %d", instHdr.instLen));
-        if (instHdr.instLen == 0)
-        {
-            inst = 0;
-        }
-        else
-        {
-            inst = new BYTE[instHdr.instLen];
-            if (!inst)
-            {
-                //mbox
-                DBGOUT(("no mem"));
-                break;
-            }
-            rslt = Communicator.Read(inst, instHdr.instLen, &readBytes);
-            if (MYFAILED(rslt))
-            {
-                //mbox?
-                DBGOUT(("no read 2"));
-                break;
-            }
-        }
-
-        InstructionPack retPack;
-        DBGOUT(("Dispatching..."));
-        rslt = DispatchInstruction(context, &instHdr, inst, &retPack);
-        if (rslt)
-        {
-            delete[] inst;
-        }
-        if (MYFAILED(rslt))
-        {
-            //mbox?
-            DBGOUT(("no dispatcth"));
-            break;
-        }
-
-        DBGOUT(("ret..."));
-        SendingQueue.Enqueue(retPack);
-        //rslt = Communicator.Write(&retHdr, sizeof(retHdr), &writtenBytes);
-        //if (retHdr.instLen != 0)
-        //{
-        //    rslt = Communicator.Write(ret, retHdr.instLen, &writtenBytes);
-        //}
-        //if (MYFAILED(rslt))
-        //{
-        //    //mbox?
-        //    DBGOUT(("no write"));
-        //    break;
-        //}
-
-    }
-    return 0;
-}
+//DWORD WINAPI WaitingProc(LPARAM param)
+//{
+//
+//    int rslt = Communicator.Init(0); //Waiting for start.
+//    if (MYFAILED(rslt))
+//    {
+//        //mbox?
+//        DBGOUT(("no init"));
+//        return 0;
+//    }
+//
+//    auto isolate = Isolate::New();
+//    isolate->Enter();
+//
+//    HandleScope handle_scope(isolate);
+//
+//    auto context = InitV8();
+//    context->Enter();
+//
+//
+//    DBGOUT(("Inited"));
+//
+//    while (true)
+//    {
+//        DWORD readBytes;
+//        InstructionHeader instHdr;
+//        BYTE* inst;
+//        rslt = Communicator.Read(&instHdr, sizeof(instHdr), &readBytes);
+//        if (MYFAILED(rslt) || readBytes != sizeof(instHdr)) //Wait for an instruction
+//        {
+//            if (GetLastError() != ERROR_BROKEN_PIPE)
+//            {
+//                DBGOUT(("no read1"));
+//            }
+//            else
+//            {
+//                DBGOUT(("server closed the pipe."));
+//            }
+//            break;
+//        }
+//
+//        DBGOUT(("Instruction received. Length: %d", instHdr.instLen));
+//        if (instHdr.instLen == 0)
+//        {
+//            inst = 0;
+//        }
+//        else
+//        {
+//            inst = new BYTE[instHdr.instLen];
+//            if (!inst)
+//            {
+//                //mbox
+//                DBGOUT(("no mem"));
+//                break;
+//            }
+//            rslt = Communicator.Read(inst, instHdr.instLen, &readBytes);
+//            if (MYFAILED(rslt))
+//            {
+//                //mbox?
+//                DBGOUT(("no read 2"));
+//                break;
+//            }
+//        }
+//
+//        InstructionPack retPack;
+//        DBGOUT(("Dispatching..."));
+//        rslt = DispatchInstruction(context, &instHdr, inst, &retPack);
+//        if (rslt)
+//        {
+//            delete[] inst;
+//        }
+//        if (MYFAILED(rslt))
+//        {
+//            //mbox?
+//            DBGOUT(("no dispatcth"));
+//            break;
+//        }
+//
+//        DBGOUT(("ret..."));
+//        SendingQueue.Enqueue(retPack);
+//        //rslt = Communicator.Write(&retHdr, sizeof(retHdr), &writtenBytes);
+//        //if (retHdr.instLen != 0)
+//        //{
+//        //    rslt = Communicator.Write(ret, retHdr.instLen, &writtenBytes);
+//        //}
+//        //if (MYFAILED(rslt))
+//        //{
+//        //    //mbox?
+//        //    DBGOUT(("no write"));
+//        //    break;
+//        //}
+//
+//    }
+//    return 0;
+//}
 
 DWORD WINAPI SendingProc(LPARAM param)
 {

@@ -10,7 +10,8 @@
 
 #include "resource.h"
 #include "ConcurrentQueue.h"
-#include <v8.h>
+#include <include/v8.h>
+#include <include/libplatform/libplatform.h>
 #include "jsInterfaces.h"
 #include "worker.h"
 #include "misc.h"
@@ -35,33 +36,36 @@ HWND g_hDlgMain;
 static WNDPROC g_OldEditProc;
 
 Isolate* g_mainIsolate;
+Platform* g_platform;
 
 void LoadInitJsFiles(Isolate* isolate)
 {
     auto context = isolate->GetCurrentContext();
-    auto initJsFileName = g_dllPath + L"init.js";
-    auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
-    auto source = ReadJSFile(isolate, initJsFileName.c_str());
-    if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
-    {
-        OutputWriter::OutputInfo(L"%s loaded\n", initJsFileName.c_str());
-    }
-
     auto parserJsFileName = g_dllPath + L"parser.js";
-    name = String::NewFromTwoByte(isolate, (uint16_t*)parserJsFileName.c_str());
-    source = ReadJSFile(isolate, parserJsFileName.c_str());
+    auto name = String::NewFromTwoByte(isolate, (uint16_t*)parserJsFileName.c_str());
+    auto source = ReadJSFile(isolate, parserJsFileName.c_str());
     if (source.IsEmpty() || !ExecuteString(isolate, source, name, false, true) ||
         !context->Global()->Get(String::NewFromUtf8(isolate, "ParseShortCmd"))->IsFunction())
     {
         OutputWriter::OutputInfo(L"parser.js faild, short cmd disabled.\n");
         EnableWindow(GetDlgItem(g_hDlgMain, IDC_INPUTCMD), FALSE);
     }
+    auto initJsFileName = g_dllPath + L"init.js";
+    name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
+    source = ReadJSFile(isolate, initJsFileName.c_str());
+    if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
+    {
+        OutputWriter::OutputInfo(L"%s loaded\n", initJsFileName.c_str());
+    }
+
 }
 
 void ProcessEngineMsg(MSG* msg)
 {
     if (msg->message == JSENGINE_INIT)
     {
+        g_platform = platform::CreateDefaultPlatform(0);
+        V8::InitializePlatform(g_platform);
         g_mainIsolate = Isolate::New();
         g_mainIsolate->Enter();
         {
@@ -91,6 +95,8 @@ void ProcessEngineMsg(MSG* msg)
         g_mainIsolate->GetCurrentContext()->Exit();
         g_mainIsolate->Exit();
         g_mainIsolate->Dispose();
+        V8::ShutdownPlatform();
+        delete g_platform;
         DeleteCriticalSection(&g_v8ThreadLock);
         //FreeLibrary(g_hModule);
     }

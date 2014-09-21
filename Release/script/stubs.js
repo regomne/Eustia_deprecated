@@ -76,7 +76,7 @@ function mwrite(addr,buff,start,len)
 
 function readText(fname)
 {
-	return _ReadText(fname);
+	return _ReadText(genFname(fname));
 }
 
 function dumpMemory()
@@ -133,4 +133,12 @@ function newCallback(funcId,argCnt,callType)
 function deleteMem(addr)
 {
 	return _DeleteMem(addr);
+}
+
+function writeText(fname,buff,isUnicode)
+{
+	if(isUnicode==undefined)
+		isUnicode=0;
+	
+	return _WriteText(genFname(fname),buff,isUnicode);
 }
