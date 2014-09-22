@@ -6,6 +6,7 @@ var ShortCmdTable={
 	cm2: 'mm2=getMemoryBlocks();rslt=getNewExecuteMemory(mm1,mm2);displayMemInfo(rslt.newExes)',
 	lf: 'load("myfunc.js")',
 	lq: 'load("script/quickfunc.js")',
+	llib: 'Win32.LoadLibraryA("{0}")',
 	us: 'printOneDisasm(parseInt("{0}",16))',
 	u: function(addr)
 		{

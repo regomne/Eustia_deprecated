@@ -11,6 +11,10 @@ function newCattack(regs)
 	{
 		mwrite(regs.ebp-0x18,Convert.fromU32(u32(regs.ebp-0x18)*20))
 	}
+	else if(u32(regs.esi+TEAM_TYPE_OFFSET)==0)
+	{
+		mwrite(regs.ebp-0x18,Convert.fromU32(1));
+	}
 }
 
 function HookSuperDamage(){Hooker.checkInfo(CATTACK_OFFSET,function(regs){return newCattack(regs)})}
@@ -46,5 +50,5 @@ function HookTime()
 	Win32.deleteMem(oldProt);
 }
 
-function cheat(){HookSuperDamage();HookWudi();HookTime();}
+function cheat(){HookSuperDamage();HookWudi()}
 function closeCheat(){Hooker.unHook(CATTACK_OFFSET);Hooker.unHook(CCOLLISION_OFFSET)}
