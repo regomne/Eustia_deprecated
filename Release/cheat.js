@@ -1,19 +1,20 @@
-var ROLEBASE=0X2B110E0;
+var ROLEBASE=0X2B34618;
 var TEAM_TYPE_OFFSET=0x82c;
-var CATTACK_OFFSET=0xf8d044;
-var CCOLLISION_OFFSET=0x103b4a6;
-var GETTIME_IAT=0x22fb5cc;
+var CATTACK_OFFSET=0x00f9ee74;
+var CCOLLISION_OFFSET=0x0104da36;
+var SETHP_FUNC=0x00FE1940;
+//var GETTIME_IAT=0x22fb5cc;
+var GAME_SCORE_BASE=0x2AAECE4; //be4ad9d7d33448f56e49ce2047d0521a
 
 function newCattack(regs)
 {
 	var player=u32(ROLEBASE);
-	if(u32(regs.esi+TEAM_TYPE_OFFSET)==100)
+	var team=u32(regs.esi+TEAM_TYPE_OFFSET);
+	if((team==100 || team==50)
+		/* && regs.ebx==player*/
+	)
 	{
 		mwrite(regs.ebp-0x18,Convert.fromU32(u32(regs.ebp-0x18)*20))
-	}
-	else if(u32(regs.esi+TEAM_TYPE_OFFSET)==0)
-	{
-		mwrite(regs.ebp-0x18,Convert.fromU32(1));
 	}
 }
 
@@ -33,6 +34,16 @@ function newCollision(regs)
 
 function HookWudi(){Hooker.checkInfo(CCOLLISION_OFFSET,function(regs){return newCollision(regs)})}
 
+function newSethp(regs)
+{
+	var player=u32(ROLEBASE);
+	if(regs.ecx==player)
+	{
+		wu32(regs.esp+4,10000);
+	}
+}
+function HookSethp(){Hooker.checkInfo(SETHP_FUNC,function(regs){return newSethp(regs)})}
+
 var startTime=0;
 function newGetTime()
 {
@@ -50,5 +61,6 @@ function HookTime()
 	Win32.deleteMem(oldProt);
 }
 
-function cheat(){HookSuperDamage();HookWudi()}
+function cheat(){HookSuperDamage();HookWudi();HookSethp()}
 function closeCheat(){Hooker.unHook(CATTACK_OFFSET);Hooker.unHook(CCOLLISION_OFFSET)}
+function fen(){wu32(u32(GAME_SCORE_BASE)+0x19f,0xf423f)}

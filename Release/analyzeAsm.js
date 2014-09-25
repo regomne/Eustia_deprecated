@@ -1,4 +1,6 @@
-﻿var Analyzer={
+﻿load('script/mapfile.js');
+
+var Analyzer={
     init:function(startAddr,region,newBranch)
     {
         this.startAddr=startAddr;
@@ -486,6 +488,8 @@
                         if(!isNaN(num))
                             lastCall=num;
                         
+						if(num>0x1000)
+							print('has num>1000');
                         if(relations[offset]==undefined)
                         {
                             relations[offset]=[lastCall];
@@ -521,6 +525,7 @@
     getAllOffsetsRelation:function(keymap,outAddr)
     {
         var pats={lea:/lea.*,.*\[edi\+([^\]]+)\]/,
+			movedi:/mov.*ecx,*edi/,
             mov:/mov.*\[edi\+([^\]]+)\],\s*(\w*)/,
             calc:/(add|or).*\[edi\+([^\]]+)\].*/,
             push:/push\s+edi/,
@@ -536,6 +541,52 @@
         }
         return keyrels;
     },
+	
+	getOffTypes:function(mf,rels)
+	{
+		var addrTbl={};
+		for(var k in this._funcTbl)
+		{
+			var addr=mf[k];
+			if(addr==undefined)
+				throw "can't find "+k;
+			addrTbl[addr]=this._funcTbl[k];
+		}
+		
+		var offTypes={};
+		for(var k in rels)
+		{
+			var tbl=rels[k];
+			for(var off in tbl)
+			{
+				offTypes[off]=(offTypes[off]||undefined);
+				var types=offTypes[off];
+				var addrs=tbl[off];
+				for(var i=0;i<addrs.length;i++)
+				{
+					var t=undefined;
+					if(addrs[i]<0x1000)
+					{
+						t='i';
+					}
+					else if(addrTbl[addrs[i]]!=undefined)
+					{
+						t=addrTbl[addrs[i]];
+					}
+					if(t==undefined)
+						break;
+					
+					if(types==undefined)
+						types=t;
+					else if(types!=t)
+						print('types not fit. ',off);
+				}
+				offTypes[off]=types;
+			}
+		}
+		
+		return offTypes;
+	},
     
     _getJxxType:function(s)
     {
@@ -569,11 +620,33 @@
     
     _funcTbl:
     {
-        0xcff070: {type:'pushVecFloat'},//_e562072753298367ce056a17d553f42
-        0x1dc6f60: {type:'read str'},//_135464e5a5c44cca0bae3c93c19ef7f
-        0x1dc64a0: {type:'read int'},//_231eea78a588c4c2c09ab1f838e7c2b
-        0x1e89b20: {type:'get attr index'},//acd016aa25f4388194414e046458dfd4
-        0x1f1d9c0: {type:'pushVec4Dword'},//bb94000cb68d17754753bef3888285dd
+        '_135464e5a5c44cca0bae3c93c19ef7f': 's',
+		/*
+		struct Str{
+			void* vt;
+			union{
+				wchar_t Str[8];
+				wchar_t* pStr;
+			};
+			int charCount;
+			int maxCharCount;
+		};
+		*/
+		'_73e2e85c1433949d1a98894b650ac85': 'pw', //ptr to wchar_t*
+        '_e562072753298367ce056a17d553f42': 'vf',
+        '_231eea78a588c4c2c09ab1f838e7c2b': 'i',
+        'acd016aa25f4388194414e046458dfd4': 'i',//get attr index
+		'_649bac2b9ac26ba01bd0d0c501d174a': 'i',
+		'_5064a88f26aa003c39ca1eafd7afb52': 'i', //strlen, !!!!!!!不匹配
+		'_ef53017c49d9ef4e882235ef997185c': 'e', //encrypted int
+        'bb94000cb68d17754753bef3888285dd': 'vi',//push 4 dword to a vec
+		'e667ac3f1dee7cea65ed38dc7bfa850c': 'vi', //push 1 dword to a vec
+		'_8a496f9fd9409a8437a1a083dba0e50': 'vs', //push 1 wchar_t* to a vec
+		'_01b69ec72ca4330f235a3e8df93fc04': 'vvi', //vector<vector<dword>>
+		'_e05a4d0b6a659a64b2fdffbe199702d': 'vi', //vector<3dword>
+		'_a5f0e9e3461be64bc0f8e17e8125324': 'i', //compare str?
+		'_98b20f2f05710e92e7e508758328db2': 'm', //map
+		'_dcd4a2cdfd107cc41a7cc4ec25e96d6': 'm',
     },
     
     _isInRange:function(region,addr)
@@ -645,7 +718,20 @@ function getKeysToAddressMap(keyAddr,switchTable)
     return map;
 }
 
-function analyRels(rel)
+function displayRels(rel,km)
+{
+	for(var k in rel)
+	{
+		print(k,km[k]);
+		var offs=rel[k];
+		for(var off in offs)
+		{
+			print(parseInt(off),offs[off].map(function(ele){return ele.toString(16)}));
+		}
+	}
+}
+
+function analyRels(rel,mf)
 {
     var addrs={};
     var conflicts={};
@@ -685,18 +771,43 @@ function analyRels(rel)
     
     for(var conf in conflicts)
     {
-        print('conflict: ',parseInt(conf),offs[conf].map(function(ele){return ele.slice(0,-1)}));
+        print('conflict: ',parseInt(conf),offs[conf]);
     }
     
+	revFunctbl={};
+	for(var k in Analyzer._funcTbl)
+	{
+		revFunctbl[mf[k]]=k;
+	}
+	
+	sorted=[];
+	for(var addr in addrs)
+	{
+		var s=addr;
+		if(revFunctbl[addr]!=undefined)
+			s=revFunctbl[addr];
+		else
+			s=parseInt(s).toString(16);
+		sorted.push([s,addrs[addr]]);
+	}
+	sorted.sort(function(a,b){return b[1]-a[1]})
+	
     print('summary:');
-    for(var addr in addrs)
-    {
-        print(parseInt(addr),addrs[addr]);
-    }
+    for(var i=0;i<sorted.length;i++)
+	{
+		print(sorted[i][0],sorted[i][1].toString());
+	}
 }
 
-Analyzer.init(0,[[0x01EF01B0,0x01EFD3E3]],0);
-//sw=Analyzer.getSwitch(0x01EF0E17);
-//keymap=getKeysToAddressMap(0x2d73518,sw);
-//cs=Analyzer.getAllCallsFromBranch([[0x1ef43a9,0x1ef43ac]],keymap)
-//rel=Analyzer.getAllOffsetsRelation(keymap,[[0x1ef43a9,0x1ef43ac]]);
+Analyzer.init(0,[[0x01F25160,0x01F32393]],0);
+
+function beginAna()
+{
+	sw=Analyzer.getSwitch(0x01f25dc7);
+	keymap=getKeysToAddressMap(0x2d969f8,sw);
+	//cs=Analyzer.getAllCallsFromBranch([[0x1ef43a9,0x1ef43ac]],keymap)
+	rel=Analyzer.getAllOffsetsRelation(keymap,[[0x1f2c3a9,0x1f2c3ac]]);
+	dnfmap=readMapFile('d:\\dnfFiles\\10.0.72.0\\dnf.map')
+	offtypes=Analyzer.getOffTypes(dnfmap,rel)
+	for(var off in offtypes)print(parseInt(off),offtypes[off])
+}

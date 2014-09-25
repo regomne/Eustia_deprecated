@@ -74,12 +74,21 @@ function CheckVal(regs)
 		var last;
 		try{last=u32(curebp+4);curebp=u32(curebp);}
 		catch(e){break;}
-		s=s+last+', ';
+		s=s+last.toString(16)+', ';
 		i++;
 	}
 	print(s);
 }
 function ChkVal(addr){Hooker.checkInfo(addr,function(regs){CheckVal(regs)})}
+
+function newRunChk(regs,addr)
+{
+	var atk=u32(regs.esp+8);
+	print(addr,'run',atk);
+	dumpMemory(-1,atk,0x7000,'d:\\'+atk.toString(16)+'.bin')
+}
+function RunChk(addr){Hooker.checkInfo(addr,function(regs){newRunChk(regs,addr)})}
+
 
 var excludeList=[1,4,6,7,12,13,34,46,63,101];
 var includeList=[32];
