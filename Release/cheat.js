@@ -10,11 +10,11 @@ function newCattack(regs)
 {
 	var player=u32(ROLEBASE);
 	var team=u32(regs.esi+TEAM_TYPE_OFFSET);
-	if((team==100 || team==50)
+	if((team==100 || team==50 || team==110 || team!=0)
 		/* && regs.ebx==player*/
 	)
 	{
-		mwrite(regs.ebp-0x18,Convert.fromU32(u32(regs.ebp-0x18)*20))
+		mwrite(regs.ebp-0x18,Convert.fromU32(10000000))
 	}
 }
 
