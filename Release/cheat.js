@@ -39,7 +39,7 @@ function newSethp(regs)
 	var player=u32(ROLEBASE);
 	if(regs.ecx==player)
 	{
-		wu32(regs.esp+4,10000);
+		wu32(regs.esp+4,100000);
 	}
 }
 function HookSethp(){Hooker.checkInfo(SETHP_FUNC,function(regs){return newSethp(regs)})}

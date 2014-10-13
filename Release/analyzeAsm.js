@@ -1,4 +1,6 @@
 ﻿load('script/mapfile.js');
+load('dnf_def.js');
+load('script/quickfunc.js');
 
 var Analyzer={
     init:function(startAddr,region,newBranch)
@@ -357,8 +359,18 @@ var Analyzer={
         return calls;
     },
     
-    getRegAndCallRelation:function(reg,addr,outAddr,pats,relations)
+    getRegAndCallRelation:function(reg,addr,outAddr,pats,relations,lengths)
     {
+		function getMovLength(str)
+		{
+			if(str.indexOf('byte')!=-1)
+				return 1;
+			else if(str.indexOf('dword')!=-1)
+				return 4;
+			else if(str.indexOf('word')!=-1)
+				return 2;
+			throw 'no length prefix!';
+		}
         if(u16(addr)!=0x3d80 || u16(addr+7)!=0x850f)
             throw 'unk branch start!';
         
@@ -423,6 +435,10 @@ var Analyzer={
                         }
                         else
                             relations[offset].push(lastCall);
+							
+						var instLen=getMovLength(disasm.string);
+						if(!lengths[offset] || (lengths[offset] && lengths[offset]>instLen))
+							lengths[offset]=instLen;
                     }
                     else if((mo=pats.calc.exec(disasm.string))!=null)
                     {
@@ -497,6 +513,10 @@ var Analyzer={
                         }
                         else
                             relations[offset].push(lastCall);
+							
+						var instLen=getMovLength(disasm.string);
+						if(!lengths[offset] || (lengths[offset] && lengths[offset]>instLen))
+							lengths[offset]=instLen;
                     }
                     else if((mo=pats.calc.exec(disasm.string))!=null)
                     {
@@ -534,10 +554,10 @@ var Analyzer={
         var keyrels={};
         for(var k in keymap)
         {
-            var rels={};
+            var rels={},lengths={};
             print('get key:',k);
-            this.getRegAndCallRelation('edi',keymap[k],outAddr,pats,rels);
-            keyrels[k]=rels;
+            this.getRegAndCallRelation('edi',keymap[k],outAddr,pats,rels,lengths);
+            keyrels[k]={rels:rels,lengths:lengths};
         }
         return keyrels;
     },
@@ -556,11 +576,12 @@ var Analyzer={
 		var offTypes={};
 		for(var k in rels)
 		{
-			var tbl=rels[k];
+			var tbl=rels[k].rels;
+			var length=rels[k].lengths;
 			for(var off in tbl)
 			{
-				offTypes[off]=(offTypes[off]||undefined);
-				var types=offTypes[off];
+				offTypes[off]=(offTypes[off]||{type:undefined,length:length[off]});
+				var types=offTypes[off].type;
 				var addrs=tbl[off];
 				for(var i=0;i<addrs.length;i++)
 				{
@@ -581,7 +602,7 @@ var Analyzer={
 					else if(types!=t)
 						print('types not fit. ',off);
 				}
-				offTypes[off]=types;
+				offTypes[off].type=types;
 			}
 		}
 		
@@ -620,7 +641,7 @@ var Analyzer={
     
     _funcTbl:
     {
-        '_135464e5a5c44cca0bae3c93c19ef7f': 's',
+        '_135464e5a5c44cca0bae3c93c19ef7f': 'S',
 		/*
 		struct Str{
 			void* vt;
@@ -632,14 +653,14 @@ var Analyzer={
 			int maxCharCount;
 		};
 		*/
-		'_73e2e85c1433949d1a98894b650ac85': 'pw', //ptr to wchar_t*
+		'_73e2e85c1433949d1a98894b650ac85': 's', //ptr to wchar_t*
         '_e562072753298367ce056a17d553f42': 'vf',
         '_231eea78a588c4c2c09ab1f838e7c2b': 'i',
         'acd016aa25f4388194414e046458dfd4': 'i',//get attr index
 		'_649bac2b9ac26ba01bd0d0c501d174a': 'i',
 		'_5064a88f26aa003c39ca1eafd7afb52': 'i', //strlen, !!!!!!!不匹配
 		'_ef53017c49d9ef4e882235ef997185c': 'e', //encrypted int
-        'bb94000cb68d17754753bef3888285dd': 'vi',//push 4 dword to a vec
+        'bb94000cb68d17754753bef3888285dd': 'v1',//push 4 dword to a vec
 		'e667ac3f1dee7cea65ed38dc7bfa850c': 'vi', //push 1 dword to a vec
 		'_8a496f9fd9409a8437a1a083dba0e50': 'vs', //push 1 wchar_t* to a vec
 		'_01b69ec72ca4330f235a3e8df93fc04': 'vvi', //vector<vector<dword>>
@@ -738,7 +759,7 @@ function analyRels(rel,mf)
     var offs={};
     for(var k in rel)
     {
-        var kv=rel[k];
+        var kv=rel[k].rels;
         for(var off in kv)
         {
             if(offs[off]!=undefined)
@@ -799,6 +820,127 @@ function analyRels(rel,mf)
 	}
 }
 
+function DecryptVal(val)
+{
+	var tmp=u32(val);
+	var decBaseTbl=u32(DECRYPT_BASETABLE_OFFSET);
+	var firstIdx=(tmp>>>16);
+	var tableFirst=u32(decBaseTbl+firstIdx*4+DECRYPT_BASETABLE_RET1_OFFSET);
+	var secondIdx=tmp&0xffff;
+	tmp=u32(tableFirst+secondIdx*4+DECRYPT_BASETABLE_RET2_OFFSET);
+	
+	var key=((tmp&0xffff)<<16)|(tmp&0xffff);
+	return key^(u32(val+8));
+}
+
+function GetScriptData(scr,types)
+{
+	function readVector(vec,type)
+	{
+		var ret=[];
+		var start=u32(vec+4);
+		var end=u32(vec+8);
+		if(end==start || (start==0 || end==0))
+			return ret;
+		if(type[0]=='i' || type[0]=='f')
+		{
+			var p=start;
+			while(p<end)
+			{
+				ret.push(u32(p));
+				p+=4;
+			}
+		}
+		else if(type[0]=='s')
+		{
+			var p=start;
+			while(p<end)
+			{
+				ret.push(ustr(u32(p)));
+				p+=4;
+			}
+		}
+		else if(type[0]=='v')
+		{
+			var p=start;
+			while(p<end)
+			{
+				ret.push(readVector(p,type.slice(1)));
+				p+=0x14;
+			}
+		}
+		else
+		{
+			if(type[0]=='1')
+			{
+				var p=start;
+				while(p<end)
+				{
+					ret.push(u32(p));
+					ret.push(u32(p+4));
+					ret.push(u8(p+8));
+					ret.push(u32(p+0xc));
+					p+=0x10;
+				}
+			}
+			else
+				throw "unknown vec type";
+		}
+		return ret;
+	}
+	
+	function readString(str)
+	{
+		var len=u32(str+0x14);
+		if(len<=7)
+			return '';
+	}
+	
+	var data={};
+	for(var off in types)
+	{
+		off=parseInt(off);
+		var t=types[off].type;
+		var l=types[off].length;
+		if(t!=undefined)
+		{
+			if(t[0]=='v')
+			{
+				data[off]=readVector(scr+off,t.slice(1));
+				continue;
+			}
+			switch(t)
+			{
+			case 'i':
+				if(l==4)
+					data[off]=u32(scr+off);
+				else if(l==2)
+					data[off]=u16(scr+off);
+				else if(l==1)
+					data[off]=u8(scr+off);
+				break;
+			case 's':
+				var ss=u32(scr+off);
+				if(ss)
+					data[off]=ustr(ss);
+				break;
+			case 'e':
+				data[off]=DecryptVal(scr+off);
+				break;
+			case 'S':
+				
+				break;
+			case 'm':
+				break;
+			default:
+				throw "unknown type";
+			}
+		}
+	}
+	return data;
+}
+
+
 Analyzer.init(0,[[0x01F25160,0x01F32393]],0);
 
 function beginAna()
@@ -809,5 +951,16 @@ function beginAna()
 	rel=Analyzer.getAllOffsetsRelation(keymap,[[0x1f2c3a9,0x1f2c3ac]]);
 	dnfmap=readMapFile('d:\\dnfFiles\\10.0.72.0\\dnf.map')
 	offtypes=Analyzer.getOffTypes(dnfmap,rel)
-	for(var off in offtypes)print(parseInt(off),offtypes[off])
+	for(var off in offtypes)print(parseInt(off),offtypes[off].type,offtypes[off].length);
+}
+function testData(fname)
+{
+	var itemTbl=u32(u32(u32(PLAYER_INFO_INDEX)+0x58c8)+0x3c);
+	for(var i=2;i<3;i++)
+	{
+		var item2=u32(itemTbl+0xc+i*4);
+		print(item2);
+		var data=GetScriptData(u32(item2+0x2ac),offtypes);
+		displayObject(data,fname+i+'.txt');
+	}
 }

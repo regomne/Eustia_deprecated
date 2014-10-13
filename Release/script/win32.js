@@ -5,6 +5,7 @@
 		'kernel32.GetProcessHeap',
 		'kernel32.VirtualProtect',
 		'kernel32.LoadLibraryA',
+		'kernel32.OpenProcess',
 		'winmm.timeGetTime',
 	],
 	

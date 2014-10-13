@@ -55,7 +55,7 @@ tryLoad('script\\asm.js');
 tryLoad('script\\win32.js');
 tryLoad('script\\cryptojs.js');
 
-function displayObject(obj)
+function displayObject(obj,file)
 {
 	function display_(obj,level)
 	{
@@ -79,7 +79,11 @@ function displayObject(obj)
 		s+=indentStr.slice(0,-1)+'}';
 		return s;
 	}
-	print(display_(obj,0));
+	var s=display_(obj,0);
+	if(file!=undefined)
+		writeText(file,s);
+	else
+		print(s);
 }
 var Convert={
 	toU32: function(s,off,be)
