@@ -60,7 +60,14 @@ function disassemble(addr)
 
 function mread(addr,size)
 {
-	return _Mread(addr,size);
+	try
+	{
+		return _Mread(addr,size);
+	}
+	catch(e)
+	{
+		throw new Error(e);
+	}
 }
 
 function mwrite(addr,buff,start,len)

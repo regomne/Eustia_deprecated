@@ -1,14 +1,14 @@
 ﻿function u32(addr)
 {
-	return Convert.toU32(_Mread(addr,4));
+	return Convert.toU32(mread(addr,4));
 }
 function u16(addr)
 {
-	return Convert.toU16(_Mread(addr,2));
+	return Convert.toU16(mread(addr,2));
 }
 function u8(addr)
 {
-	return _Mread(addr,1).charCodeAt(0);
+	return mread(addr,1).charCodeAt(0);
 }
 
 function wu32(addr,i)
@@ -24,9 +24,10 @@ function wu8(addr,i)
 	mwrite(addr,String.fromCharCode(i&0xff));
 }
 
-function ustr(addr)
+function ustr(addr,cnt)
 {
 	var s=[];
+	if(cnt==undefined)
 	while(true)
 	{
 		var c=u16(addr);
@@ -34,6 +35,15 @@ function ustr(addr)
 			break;
 		addr+=2;
 		s.push(String.fromCharCode(c));
+	}
+	else
+	{
+		while(cnt--)
+		{
+			var c=u16(addr);
+			addr+=2;
+			s.push(String.fromCharCode(c));
+		}
 	}
 	return s.join('');
 }
@@ -49,4 +59,12 @@ function astr(addr)
 		s.push(c);
 	}
 	return s.join('');
+}
+function stlString(addr)
+{
+	var curLen=u32(addr+0x10);
+	if(curLen<=7)
+		return ustr(addr,curLen);
+	else
+		return ustr(u32(addr),curLen);
 }

@@ -1,10 +1,11 @@
-var ROLEBASE=0X2B34618;
-var TEAM_TYPE_OFFSET=0x82c;
-var CATTACK_OFFSET=0x00f9ee74;
-var CCOLLISION_OFFSET=0x0104da36;
-var SETHP_FUNC=0x00FE1940;
+load('dnf_def.js');
+load('script/quickfunc.js');
+var ROLEBASE=PLAYER_INFO_INDEX;
+var CATTACK_OFFSET=0x00fa8734;
+var CCOLLISION_OFFSET=0x01057e46;
+var SETHP_FUNC=0x00FEB6C0;
 //var GETTIME_IAT=0x22fb5cc;
-var GAME_SCORE_BASE=0x2AAECE4; //be4ad9d7d33448f56e49ce2047d0521a
+//var GAME_SCORE_BASE=0x2AAECE4; //be4ad9d7d33448f56e49ce2047d0521a
 
 function newCattack(regs)
 {
@@ -14,7 +15,10 @@ function newCattack(regs)
 		/* && regs.ebx==player*/
 	)
 	{
-		mwrite(regs.ebp-0x18,Convert.fromU32(10000000))
+		var old;
+		old=250000;
+		//old=u32(regs.ebp-ATTACK_DAMAGEHP_OFFSET);
+		mwrite(regs.ebp-ATTACK_DAMAGEHP_OFFSET,Convert.fromU32(old*20))
 	}
 }
 
@@ -28,6 +32,7 @@ function newCollision(regs)
 			regs.eax=0;
 		else if(u32(regs.esi+TEAM_TYPE_OFFSET)==u32(player+TEAM_TYPE_OFFSET))
 			regs.eax=1;
+		;
 	}
 	return true;
 }

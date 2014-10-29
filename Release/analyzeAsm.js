@@ -842,7 +842,7 @@ function GetScriptData(scr,types)
 		var end=u32(vec+8);
 		if(end==start || (start==0 || end==0))
 			return ret;
-		if(type[0]=='i' || type[0]=='f')
+		if(type[0]=='i' || type[0]=='f' || type[0]==undefined)
 		{
 			var p=start;
 			while(p<end)
@@ -941,26 +941,124 @@ function GetScriptData(scr,types)
 }
 
 
-Analyzer.init(0,[[0x01F25160,0x01F32393]],0);
+Analyzer.init(0,[[0x01F2F580,0x01F3C7B3]],0);
 
 function beginAna()
 {
-	sw=Analyzer.getSwitch(0x01f25dc7);
-	keymap=getKeysToAddressMap(0x2d969f8,sw);
+	sw=Analyzer.getSwitch(0x01f301e7);
+	keymap=getKeysToAddressMap(0x2da1cd8,sw);
 	//cs=Analyzer.getAllCallsFromBranch([[0x1ef43a9,0x1ef43ac]],keymap)
-	rel=Analyzer.getAllOffsetsRelation(keymap,[[0x1f2c3a9,0x1f2c3ac]]);
-	dnfmap=readMapFile('d:\\dnfFiles\\10.0.72.0\\dnf.map')
+	rel=Analyzer.getAllOffsetsRelation(keymap,[[0x1f367c9,0x1f367cc]]);
+	dnfmap=readMapFile('d:\\dnfFiles\\10.0.78.0\\dnf.map')
 	offtypes=Analyzer.getOffTypes(dnfmap,rel)
 	for(var off in offtypes)print(parseInt(off),offtypes[off].type,offtypes[off].length);
 }
-function testData(fname)
+function testScript(fname)
 {
 	var itemTbl=u32(u32(u32(PLAYER_INFO_INDEX)+0x58c8)+0x3c);
-	for(var i=2;i<3;i++)
+	for(var i=2;i<4;i++)
 	{
 		var item2=u32(itemTbl+0xc+i*4);
 		print(item2);
 		var data=GetScriptData(u32(item2+0x2ac),offtypes);
 		displayObject(data,fname+i+'.txt');
 	}
+}
+
+function GetEquipData(ptr,moff)
+{
+    var item2=ptr;
+    var magic=u32(item2+MAGICSEAL_VECTOR_OFFSET);
+    var equ={};
+    if(magic)
+    {
+        var magicdata=GetScriptData(u32(magic),moff);
+        equ.magic=magicdata;
+    }
+    var equipdata=GetScriptData(item2+INVENTORY_DATA_OFFSET,moff);
+    equ.data=equipdata;
+    return equ;
+}
+function testEquip(fname,id)
+{
+    var itemTbl=u32(u32(u32(PLAYER_INFO_INDEX)+0x58c8)+0x3c);
+    var item2=u32(itemTbl+0xc+id*4);
+    print(item2);
+    var equ=GetEquipData(item2,mofftypes);
+    if(equ.magic)
+        displayObject(equ.magicdata,fname+'_m.txt');
+    displayObject(equ.data,fname+'_e.txt');
+}
+
+
+function hookCollect(regs,equips)
+{
+    var item2=regs.esi;
+    if(u32(item2+4)!=2)
+        return;
+    print(item2);
+    equips[regs.esi]=GetEquipData(item2,mofftypes);
+
+}
+
+function hookFree(regs,equips)
+{
+    var addr=u32(regs.esp+4);
+    if(equips[addr]!=undefined)
+        delete equips[addr];
+}
+
+var gEquips=gEquips || {};
+function hookEquip()
+{
+    Hooker.checkInfo(0x9f3816,function(regs){return hookCollect(regs,gEquips)});
+    Hooker.checkInfo(0x9f21c6,function(regs){return hookCollect(regs,gEquips)});
+    Hooker.checkInfo(0x20aaf9e,function(regs){return hookFree(regs,gEquips)});
+    return function(){
+        Hooker.unHook(0x9f3816);
+        Hooker.unHook(0x9f21c6);
+        Hooker.unHook(0x20aaf9e);
+    };
+}
+
+function cmpEquip(pos)
+{
+    var it1=u32(ITEM_TABLE_BASE);
+    it1=u32(it1+ITEM_TABLE_BASE_OFFSET);
+    var item=u32(it1+pos*4);
+    print(item);
+
+    if(item!=0 && u32(item+4)==2)
+    {
+        if(gEquips[item]==undefined)
+        {
+            print('item ',item,'not found');
+            return true;
+        }
+        var equ=GetEquipData(item,mofftypes);
+        if(isObjectSame(equ,gEquips[item]))
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return undefined;
+    }
+
+}
+
+function enumCmpEquip()
+{
+    for(var i=3;i<30;i++)
+    {
+        var ret=cmpEquip(i);
+        if(ret===false)
+            print('pos',i,'not fit!');
+    }
+    print('over');
 }

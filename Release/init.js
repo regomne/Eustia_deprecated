@@ -70,6 +70,14 @@ function displayObject(obj,file)
 			{
 				s+=val.toString(16)+',\r\n';
 			}
+			// else if(val instanceof Array)
+			// {
+			// 	var s0='[';
+			// 	for(var i=0;i<val.length;i++)
+			// 	{
+			// 		s0+=val[i]
+			// 	}
+			// }
 			else
 			{
 				s+='\r\n';
@@ -85,6 +93,41 @@ function displayObject(obj,file)
 	else
 		print(s);
 }
+
+function isObjectSame(obj1,obj2)
+{
+	if(obj1===obj2)
+		return true;
+	for(var att in obj2)
+	{
+		if(!obj1.hasOwnProperty(att))
+			return false;
+	}
+
+	for(var att in obj1)
+	{
+		if(!obj2.hasOwnProperty(att))
+			return false;
+
+		var ele1=obj1[att];
+		var ele2=obj2[att];
+		if(typeof(ele1)!=typeof(ele2))
+			return false;
+
+		if(typeof(ele1)!='object')
+		{
+			if(ele1!==ele2)
+				return false;
+		}
+		else
+		{
+			if(!isObjectSame(ele1,ele2))
+				return false;
+		}
+	}
+	return true;
+}
+
 var Convert={
 	toU32: function(s,off,be)
 	{
