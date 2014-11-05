@@ -949,7 +949,7 @@ function beginAna()
 	keymap=getKeysToAddressMap(0x2da1cd8,sw);
 	//cs=Analyzer.getAllCallsFromBranch([[0x1ef43a9,0x1ef43ac]],keymap)
 	rel=Analyzer.getAllOffsetsRelation(keymap,[[0x1f367c9,0x1f367cc]]);
-	dnfmap=readMapFile('d:\\dnfFiles\\10.0.78.0\\dnf.map')
+	dnfmap=readMapFile('d:\\dnfFiles\\10.0.84.0\\dnf.map')
 	offtypes=Analyzer.getOffTypes(dnfmap,rel)
 	for(var off in offtypes)print(parseInt(off),offtypes[off].type,offtypes[off].length);
 }
@@ -1011,17 +1011,17 @@ function hookFree(regs,equips)
 var gEquips=gEquips || {};
 function hookEquip()
 {
-    Hooker.checkInfo(0x9f3816,function(regs){return hookCollect(regs,gEquips)});
-    Hooker.checkInfo(0x9f21c6,function(regs){return hookCollect(regs,gEquips)});
-    Hooker.checkInfo(0x20aaf9e,function(regs){return hookFree(regs,gEquips)});
+    Hooker.checkInfo(0x00fc9f3b,function(regs){return hookCollect(regs,gEquips)});
+    // Hooker.checkInfo(0x9f21c6,function(regs){return hookCollect(regs,gEquips)});
+//    Hooker.checkInfo(0x20bc6fe,function(regs){return hookFree(regs,gEquips)});
     return function(){
-        Hooker.unHook(0x9f3816);
-        Hooker.unHook(0x9f21c6);
-        Hooker.unHook(0x20aaf9e);
+        Hooker.unHook(0x00fc9f3b);
+        // Hooker.unHook(0x9f21c6);
+//        Hooker.unHook(0x20bc6fe);
     };
 }
 
-function cmpEquip(pos)
+function cmpItem(pos)
 {
     var it1=u32(ITEM_TABLE_BASE);
     it1=u32(it1+ITEM_TABLE_BASE_OFFSET);
@@ -1052,13 +1052,55 @@ function cmpEquip(pos)
 
 }
 
-function enumCmpEquip()
+function cmpEquip(pos)
+{
+    var player=u32(PLAYER_INFO_INDEX);
+    var start=player+INVENTORY_BASE_OFFSET;
+    var item=u32(start+pos*4);
+
+    if(item!=0 && u32(item+4)==2)
+    {
+        print(item);
+        if(gEquips[item]==undefined)
+        {
+            print('item ',item,'not found');
+            return true;
+        }
+        var equ=GetEquipData(item,mofftypes);
+        if(isObjectSame(equ,gEquips[item]))
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return undefined;
+    }
+}
+
+function enumCmpItem()
 {
     for(var i=3;i<30;i++)
     {
-        var ret=cmpEquip(i);
+        var ret=cmpItem(i);
         if(ret===false)
             print('pos',i,'not fit!');
+    }
+    print('over');
+}
+
+function enumCmpEquip()
+{
+    for(var i=0;i<0x1d;i++)
+    {
+        var ret=cmpEquip(i);
+        if(ret==false)
+            print('pos',i,'not fit!');
+
     }
     print('over');
 }

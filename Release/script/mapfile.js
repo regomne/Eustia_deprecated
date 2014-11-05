@@ -1,0 +1,34 @@
+function readMapFile(fname)
+{
+	var ls=readText(fname).split('\r\n');
+	var bgLine=-1;
+	for(var i=0;i<ls.length;i++)
+	{
+		if(ls[i].trim().startswith('Address'))
+		{
+			bgLine=i+1;
+			break;
+		}
+	}
+	if(bgLine==-1)
+		throw "maybe not a map file!";
+	
+	var maps={};
+	for(var i=bgLine;i<ls.length;i++)
+	{
+		if(ls[i].trim().startswith('Static'))
+			break;
+		
+		s=ls[i].trim().split(/[ ]+/);
+		if(s.length>=3)
+		{
+			var key=s[1];
+			if(key[0]>='0' && key[0]<='9')
+			{
+				key='_'+key.slice(1);
+			}
+			maps[key]=parseInt(s[2],16);
+		}
+	}
+	return maps;
+}

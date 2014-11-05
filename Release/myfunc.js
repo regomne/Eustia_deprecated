@@ -87,7 +87,7 @@ function ChkVal(addr){Hooker.checkInfo(addr,function(regs){CheckVal(regs)})}
 function newRunChk(regs,addr)
 {
 	print(addr,'runed');
-    // var item=u32(regs.esp+4);
+	  // var item=u32(regs.esp+4);
     // printMem(item,0x30);
     // var item=u32(regs.esp);
     // if(u16(item)==701)
@@ -224,14 +224,14 @@ function myTcpRecv(regs)
 	if(recvMsgFilter(pkId,tcpBuff))
 	{
 		print('Recv id:',pkId,NotiName[pkId],'size:',pkSize);
-		if(pkId==14)
+		if(pkId==0x2a)
 		{
 			printMem(tcpBuff,pkSize);
 		}
 	}
 }
-//addr: DBG_Hook_TcpRecv=E54368
-function hookTcpRecv(){Hooker.checkInfo(0xE542E0,function(regs){myTcpRecv(regs)})}
+
+function hookTcpRecv(){Hooker.checkInfo(0xE5e980,function(regs){myTcpRecv(regs)})}
 
 function GetDamagedHP2(regs,val)
 {
