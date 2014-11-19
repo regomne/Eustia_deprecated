@@ -7,6 +7,8 @@
 		'kernel32.LoadLibraryA',
 		'kernel32.OpenProcess',
 		'winmm.timeGetTime',
+		'kernel32.OutputDebugStringA',
+		'kernel32.OutputDebugStringW',
 	],
 	
 	init:function()
@@ -23,7 +25,10 @@
 		var newName=name;
 		if(name.indexOf('.')!=-1)
 			newName=name.split('.')[1];
-		this[newName]=makeStdcallFunction(getAPIAddress(name));
+		if(name[0]=='#')
+			this[newName]=makeCdeclFunction(getAPIAddress(name.slice(1)));
+		else
+			this[newName]=makeStdcallFunction(getAPIAddress(name));
 	}
 };
 

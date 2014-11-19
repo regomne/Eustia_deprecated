@@ -63,7 +63,8 @@ function astr(addr)
 function stlString(addr)
 {
 	var curLen=u32(addr+0x10);
-	if(curLen<=7)
+	var maxLen=u32(addr+0x14);
+	if(maxLen<=7)
 		return ustr(addr,curLen);
 	else
 		return ustr(u32(addr),curLen);

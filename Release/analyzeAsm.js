@@ -745,9 +745,9 @@ function displayRels(rel,km)
 	{
 		print(k,km[k]);
 		var offs=rel[k];
-		for(var off in offs)
+		for(var off in offs.rels)
 		{
-			print(parseInt(off),offs[off].map(function(ele){return ele.toString(16)}));
+			print(parseInt(off),offs.rels[off].map(function(ele){return ele.toString(16)}));
 		}
 	}
 }
@@ -941,17 +941,18 @@ function GetScriptData(scr,types)
 }
 
 
-Analyzer.init(0,[[0x01F2F580,0x01F3C7B3]],0);
+Analyzer.init(0,[[0x01F6BAF0,0x01F78EAA]],0);
 
 function beginAna()
 {
-	sw=Analyzer.getSwitch(0x01f301e7);
-	keymap=getKeysToAddressMap(0x2da1cd8,sw);
+	sw=Analyzer.getSwitch(0x01F6C757);
+	keymap=getKeysToAddressMap(0x2DE0440,sw);
 	//cs=Analyzer.getAllCallsFromBranch([[0x1ef43a9,0x1ef43ac]],keymap)
-	rel=Analyzer.getAllOffsetsRelation(keymap,[[0x1f367c9,0x1f367cc]]);
-	dnfmap=readMapFile('d:\\dnfFiles\\10.0.84.0\\dnf.map')
+	rel=Analyzer.getAllOffsetsRelation(keymap,[[0x01F72E39,0x01F72E3c]]);
+	dnfmap=readMapFile('d:\\dnfFiles\\10.0.91.0\\dnf.map')
 	offtypes=Analyzer.getOffTypes(dnfmap,rel)
 	for(var off in offtypes)print(parseInt(off),offtypes[off].type,offtypes[off].length);
+    //displayRels(rel,keymap);
 }
 function testScript(fname)
 {

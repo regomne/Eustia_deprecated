@@ -74,8 +74,8 @@ function CheckVal(regs)
 		var last;
 		try{last=u32(curebp+4);curebp=u32(curebp);}
 		catch(e){break;}
-		if(i==0)
-			dumpMemory(-1,last&0xfffff000,0x1000,'c:/1.bin');
+		// if(i==0)
+		// 	dumpMemory(-1,last&0xfffff000,0x1000,'c:/1.bin');
 		s=s+last.toString(16)+', ';
 		i++;
 	}
@@ -86,9 +86,12 @@ function ChkVal(addr){Hooker.checkInfo(addr,function(regs){CheckVal(regs)})}
 
 function newRunChk(regs,addr)
 {
-	print(addr,'runed');
-	  // var item=u32(regs.esp+4);
-    // printMem(item,0x30);
+	//Win32.OutputDebugStringW(u32(u32(regs.esp+4)+4));
+  if(u32(regs.esp+4)==0xb40)
+  {
+    CheckVal(regs);
+    print('size: ',u32(regs.esp+0xc));
+  }
     // var item=u32(regs.esp);
     // if(u16(item)==701)
     //     print(regs.eax);
@@ -131,17 +134,21 @@ function subFunc(regs)
 	{
 		if(includeList.length!=0 && includeList.indexOf(t)==-1)
 			return;
-		if(t==5)
-		{
-			var st=u32(regs.ebx+0xb);
-            var buff=regs.ebx;
-			print(u32(buff+0xb),u16(buff+7),u16(buff+9));
-		}
+		// if(t==5)
+		// {
+		// 	var st=u32(regs.ebx+0xb);
+  //           var buff=regs.ebx;
+		// 	print(u32(buff+0xb),u16(buff+7),u16(buff+9));
+		// }
 		print('recv:',regs.ecx);
+    if(regs.ecx==0x13)
+    {
+      printMem(regs.ebx,0x80);
+    }
 	}
 }
-function HookRecv(){Hooker.checkInfo(0x18f4c35,function(regs){subFunc(regs)})}
-function HookSend(){Hooker.checkInfo(0x0187D140,function(regs){MyHook_(regs)})}
+function HookRecv(){Hooker.checkInfo(0x191cb85,function(regs){subFunc(regs)})}
+function HookSend(){Hooker.checkInfo(0x01917B80,function(regs){MyHook_(regs)})}
 
 var LastTime=0;
 function myUdpSend(regs)
@@ -153,35 +160,37 @@ function myUdpSend(regs)
 			return true;
 		return false;
 	}
-	var udpBuff=u32(UDP_PACKET_MANAGER_OBJECT)+UDP_PACKET_BUFF_OFFSET;
-	if(udpBuff<1000)
-	{
-		return;
-	}
-	
-	var type=u8(udpBuff+UDP_PACKET_FLAG_OFFSET);
-	if(type!=2)
+	var udpBuff=regs.edi;
+	if(udpBuff<1000 || u8(udpBuff+UDP_PACKET_FLAG_OFFSET)!=2)
 	{
 		return;
 	}
 	
 	var pkId=u16(udpBuff+UDP_PACKET_ID_OFFSET);
+  var sendMgr=u32(UDP_PACKET_MANAGER_OBJECT);
+  var buffEnd=u32(sendMgr+UDP_PACKET_BUFF_END_OFFSET);
+  var pkSize=buffEnd-udpBuff;
 	if(filter(pkId,udpBuff))
 	{
-		if(pkId==5)
-		{
-			if(u16(udpBuff+7)==0x111 && u8(udpBuff+0xb)==8)
-			{
-				var subId=u8(udpBuff+0x12);
-				if(LastTime==0) LastTime=(new Date()).getTime();
-				var curTime=(new Date()).getTime();
-				print('subid:',subId,'interval:',curTime-LastTime);
-				LastTime=curTime;
-			}
-		}
+    //print('id:',pkId,'size',pkSize);
+		if(pkId==0x3f)
+    {
+      //print('3f being sent.');
+      wu32(sendMgr+UDP_PACKET_BUFF_END_OFFSET,udpBuff);
+    }
+    else if(pkId==0x13)
+    {
+      print('hitobject,size:',pkSize);
+      var att=u16(udpBuff+0x9);
+      var uatt=u16(udpBuff+0xd);
+      wu16(udpBuff+9,uatt);
+      wu16(udpBuff+0xd,att);
+      //mwrite(udpBuff+0xf,'\0'.repeat(12));
+      //printMem(udpBuff,pkSize);
+    }
 	}
 }
-function hookUdpSend(){Hooker.checkInfo(0x01883fe7,function(regs){myUdpSend(regs)})}
+function hookUdpSend(){Hooker.checkInfo(0x1919467,function(regs){myUdpSend(regs)})}
 
 function myTcpSend(regs)
 {
@@ -592,4 +601,28 @@ function enumSkill()
 			print('id:',id,'exId',exId,'quan',quan,'name:',name);
 		}
 	}
+}
+
+
+function getImgInfo(name)
+{
+  function getHash()
+  {
+    var hash=0;
+    for(var i=0;i<name.length;i++)
+    {
+      hash=(hash*0x1003f+name.charCodeAt(i))&0xffffffff;
+    }
+    return hash;
+  }
+
+  var h=getHash();
+  var getF=makeThisCallFunction(0x1dd36f0);
+  var ret=getF(0x02C6A430+0x1c,h,[(name+'\0').encode()],0);
+  if(ret==0)
+    return null;
+  var off=u32(ret+8);
+  var size=u32(ret+0xc);
+  var npkname=stlString(u32(ret+0x10)+4);
+  return [off,size,npkname];
 }
