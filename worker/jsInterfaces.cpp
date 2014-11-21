@@ -649,6 +649,23 @@ static void LoadJS(const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
 }
 
+//import(context,content,filename)
+static void ImportJS(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(3);
+
+    if (!args[0]->IsObject())
+    {
+        THROW_EXCEPTION(L"Context must be an object.");
+        return;
+    }
+    
+    HandleScope scope(isolate);
+    
+    
+}
+
 Handle<Context> InitV8()
 {
     Isolate* isolate = Isolate::GetCurrent();
@@ -665,6 +682,7 @@ Handle<Context> InitV8()
 
         { "_Print", Print },
         { "_LoadJS", LoadJS },
+        { "_ImportJS", ImportJS },
         { "_ReadText", ReadText },
         { "_WriteText", WriteText },
 

@@ -72,6 +72,7 @@ void ProcessEngineMsg(MSG* msg)
             HandleScope scope(g_mainIsolate);
             auto context = InitV8();
             context->Enter();
+            context->Global()->Set(String::NewFromUtf8(g_mainIsolate, "global"), context->Global());
             LoadInitJsFiles(g_mainIsolate);
         }
         InitializeCriticalSection(&g_v8ThreadLock);

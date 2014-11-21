@@ -16,7 +16,7 @@ function newCattack(regs)
 	)
 	{
 		var old;
-		old=250000;
+		old=2500000;
 		//old=u32(regs.ebp-ATTACK_DAMAGEHP_OFFSET);
 		mwrite(regs.ebp-ATTACK_DAMAGEHP_OFFSET,Convert.fromU32(old*20))
 	}
