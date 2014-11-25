@@ -1,8 +1,7 @@
 ﻿var __time1=(new Date()).getTime();
 
-var Global={};
 var LogLevel=5;
-var scriptPath=[_DllPath];
+var __Path=[_DllPath,_DllPath+'lib\\'];
 
 function print()
 {
@@ -21,19 +20,27 @@ function genFname(fname)
 		fname[1]!=':' &&
 		(fname[0]!='\\' && fname[0]!='/'))
 	{
-		fname=scriptPath.slice(-1)[0]+fname;
+		fname=__Path.slice(-1)[0]+fname;
 	}
 	return fname;
 }
 
 function load(fname)
 {
-	fname=genFname(fname);
-	if(LogLevel>=4)
+	fname=fname.replace('/','\\');
+	if(fname.length>2 &&
+		fname[1]!=':' &&
+		fname[0]!='\\')
 	{
-		print(fname,'loading...');
+		for(var i=0;i<__Path.length;i++)
+		{
+			if(_ExistsFile(__Path[i]+fname))
+				return _LoadJS(__Path[i]+fname);
+		}
+		throw new Error("can't find file: "+fname);
 	}
-	return _LoadJS(fname);
+	else
+		return _LoadJS(fname);
 }
 
 function tryLoad(fname)
@@ -48,12 +55,12 @@ function tryLoad(fname)
 	}
 }
 
-load('script\\stubs.js');
-load('script\\myString.js');
-tryLoad('script\\memory.js');
-tryLoad('script\\asm.js');
-tryLoad('script\\win32.js');
-tryLoad('script\\cryptojs.js');
+load('stubs.js');
+load('myString.js');
+tryLoad('memory.js');
+tryLoad('asm.js');
+tryLoad('win32.js');
+tryLoad('cryptojs.js');
 
 function displayObject(obj,file)
 {

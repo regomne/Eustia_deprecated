@@ -21,6 +21,8 @@
 using namespace v8;
 using namespace std;
 
+Persistent<ObjectTemplate, CopyablePersistentTraits<ObjectTemplate>> g_globalTemplate;
+
 #define THROW_EXCEPTION(str) isolate->ThrowException(String::NewFromTwoByte(isolate, (uint16_t*)str))
 
 #define CHECK_ARGS_COUNT(cnt) \
@@ -649,6 +651,36 @@ static void LoadJS(const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
 }
 
+
+void CloneObject(Isolate* isolate, Handle<Value> source, Handle<Value> target)
+{
+    HandleScope scope(isolate);
+
+    Handle<Value> args[] = { source, target };
+    static Persistent<Function,CopyablePersistentTraits<Function>> g_cloneObjectMethod;
+
+    // Init
+    if (g_cloneObjectMethod.IsEmpty()) {
+        Handle<Function> cloneObjectMethod_ = Handle<Function>::Cast(
+            Script::Compile(String::NewFromUtf8(isolate,
+            "(function(source, target) {\n\
+            Object.getOwnPropertyNames(source).forEach(function(key) {\n\
+            try {\n\
+            var desc = Object.getOwnPropertyDescriptor(source, key);\n\
+            if (desc.value === source) desc.value = target;\n\
+            Object.defineProperty(target, key, desc);\n\
+            } catch (e) {\n\
+            // Catch sealed properties errors\n\
+            }\n\
+            });\n\
+            })"), String::NewFromUtf8(isolate,"binding:script"))->Run());
+        g_cloneObjectMethod = Persistent<Function, CopyablePersistentTraits<Function>>(isolate,cloneObjectMethod_);
+    }
+
+    auto recv_ = Object::New(isolate);
+    auto clone = Local<Function>::New(isolate, g_cloneObjectMethod);
+    clone->Call(recv_, 2, args);
+}
 //import(context,content,filename)
 static void ImportJS(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
@@ -662,10 +694,35 @@ static void ImportJS(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
     
     HandleScope scope(isolate);
+
+    auto sandbox = args[0].As<Object>();
+    auto content = args[1]->ToString();
+    auto filename = args[2]->ToString();
     
-    
+    //auto globalTmp = Local<ObjectTemplate>::New(isolate, g_globalTemplate);
+    auto context = Context::New(isolate, 0);
+    CloneObject(isolate, sandbox, context->Global()->GetPrototype());
+    context->Enter();
+
+    ExecuteString(isolate, content, filename, false, true);
+
+    context->Exit();
+    CloneObject(isolate, context->Global()->GetPrototype(), sandbox);
 }
 
+static void ExistsFile(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
+    String::Value fname(args[0]->ToString());
+
+    DWORD ret = GetFileAttributesW((wchar_t*)*fname);
+    bool isFile = true;
+    if (ret == INVALID_FILE_ATTRIBUTES || ret&FILE_ATTRIBUTE_DIRECTORY)
+        isFile = false;
+    args.GetReturnValue().Set(isFile);
+}
 Handle<Context> InitV8()
 {
     Isolate* isolate = Isolate::GetCurrent();
@@ -683,6 +740,7 @@ Handle<Context> InitV8()
         { "_Print", Print },
         { "_LoadJS", LoadJS },
         { "_ImportJS", ImportJS },
+        { "_ExistsFile", ExistsFile },
         { "_ReadText", ReadText },
         { "_WriteText", WriteText },
 
@@ -712,8 +770,10 @@ Handle<Context> InitV8()
     global->Set(v8::String::NewFromUtf8(isolate, "_DllPath"), v8::String::NewFromTwoByte(isolate, (uint16_t*)g_dllPath.c_str()));
     global->Set(v8::String::NewFromUtf8(isolate, "_MyWindowThreadId"), Integer::NewFromUnsigned(isolate,g_myWindowThreadId));
 
+    
+    //g_globalTemplate = Persistent<ObjectTemplate, CopyablePersistentTraits<ObjectTemplate>>(isolate, global);
+    //auto gl = Local<ObjectTemplate>::New(isolate, g_globalTemplate);
     return Context::New(isolate, NULL, global);
-
 }
 
 void ReportException(v8::Isolate* isolate, v8::TryCatch* try_catch) {
