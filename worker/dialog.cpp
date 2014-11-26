@@ -55,7 +55,7 @@ void LoadInitJsFiles(Isolate* isolate)
     source = ReadJSFile(isolate, initJsFileName.c_str());
     if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
     {
-        OutputWriter::OutputInfo(L"%s loaded\n", initJsFileName.c_str());
+        OutputWriter::OutputInfo(L"Init Success.");
     }
 
 }
@@ -72,7 +72,7 @@ void ProcessEngineMsg(MSG* msg)
             HandleScope scope(g_mainIsolate);
             auto context = InitV8();
             context->Enter();
-            context->Global()->Set(String::NewFromUtf8(g_mainIsolate, "global"), context->Global());
+            context->Global()->Set(String::NewFromUtf8(g_mainIsolate, "global"), context->Global()->GetPrototype());
             LoadInitJsFiles(g_mainIsolate);
         }
         InitializeCriticalSection(&g_v8ThreadLock);

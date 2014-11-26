@@ -1,22 +1,13 @@
-var Consts={
-	
-};
+var native=require('native');
+var mread=native.mread;
+var mwrite=native.mwrite;
+cloneToGlobal(require('quickfunc'));
+var asm=require('asm');
+var Hooker=asm.Hooker;
+cloneToGlobal(require('memory'));
 
 load('protocols.js');
 load('dnf_def.js');
-
-function u32(addr)
-{
-	return Convert.toU32(_Mread(addr,4));
-}
-function u16(addr)
-{
-	return Convert.toU16(_Mread(addr,2));
-}
-function u8(addr)
-{
-	return _Mread(addr,1).charCodeAt(0);
-}
 
 function unpack(s,fmt,names)
 {
@@ -98,6 +89,17 @@ function newRunChk(regs,addr)
 }
 function RunChk(addr){Hooker.checkInfo(addr,function(regs){newRunChk(regs,addr)})}
 
+function newRunChk2(regs,addr)
+{
+	print(addr,'run');
+	printMem(regs.esp,0x18);
+    //printMem(u32(regs.esp+4),0x10);
+    // var item=u32(regs.esp);
+    // if(u16(item)==701)
+    //     print(regs.eax);
+}
+function RunChk2(addr){Hooker.checkInfo(addr,function(regs){newRunChk2(regs,addr)})}
+
 function GetCnt(addr,regs,dist)
 {
 	var esp=regs.esp+dist;
@@ -114,7 +116,7 @@ function HookChkStack(addr,dist)
 	});
 }
 
-var excludeList=[1,4,6,7,12,13,34,46,63,101];
+var excludeList=[1,0x3f];
 var includeList=[];
 function MyHook_(regs)
 {
@@ -130,6 +132,8 @@ function MyHook_(regs)
 function subFunc(regs)
 {
 	var t=regs.ecx;
+	var buff=regs.ebx;
+	var size=u32(regs.ebp+RECV_UDP_PACKET_SIZE_OFFSET);
 	if(excludeList.indexOf(t)==-1)
 	{
 		if(includeList.length!=0 && includeList.indexOf(t)==-1)
@@ -140,10 +144,12 @@ function subFunc(regs)
   //           var buff=regs.ebx;
 		// 	print(u32(buff+0xb),u16(buff+7),u16(buff+9));
 		// }
-		print('recv:',regs.ecx);
-    if(regs.ecx==0x13)
+		//print('recv:',t);
+
+    if(t==0x4)
     {
-      printMem(regs.ebx,0x80);
+    	print('recv4');
+      printMem(buff,size);
     }
 	}
 }
@@ -183,8 +189,8 @@ function myUdpSend(regs)
       print('hitobject,size:',pkSize);
       var att=u16(udpBuff+0x9);
       var uatt=u16(udpBuff+0xd);
-      wu16(udpBuff+9,uatt);
-      wu16(udpBuff+0xd,att);
+      // wu16(udpBuff+9,uatt);
+      // wu16(udpBuff+0xd,att);
       //mwrite(udpBuff+0xf,'\0'.repeat(12));
       //printMem(udpBuff,pkSize);
     }
@@ -242,151 +248,6 @@ function myTcpRecv(regs)
 
 function hookTcpRecv(){Hooker.checkInfo(0xE5e980,function(regs){myTcpRecv(regs)})}
 
-function GetDamagedHP2(regs,val)
-{
-	print('hp: ',u32(regs.ebp-0x18),val);
-}
-
-function CheckAttackCount(regs)
-{
-	print('multiAcc:', u16(0x031d4efa));
-}
-
-function HookCattack(){
-	var table={
-		0xf07eb4:GetDamagedHP2,
-		0x3818587:CheckAttackCount,
-		0x3812a6f:CheckAttackCount,
-	};
-	for(var addr in table)
-	{
-		Hooker.checkInfo(parseInt(addr),function(regs){table[addr](regs);});
-	}
-	return function(){for(var addr in table){Hooker.unHook(parseInt(addr))}};
-}
-
-
-function GetSetStateInfo(regs,fmt,names)
-{
-	var base=u32(0x2a12f98);
-	var t=u16(base+0x16);
-	var vals=unpack(_Mread(base+0x1c,100),fmt,names);
-	var s='';
-	for(var i=0;i<vals.length;i++)
-	{
-		s+=vals[i][0]+': '+vals[i][1]+' ';
-	}
-	print('t:',t,s);
-}
-function Hookudp(addr,fmt,names){Hooker.checkInfo(addr,function(regs){GetSetStateInfo(regs,fmt,names)})}
-
-function GetUseSkillInfo(regs)
-{
-	var skillId=u32(regs.esp+4);
-	print('obj: ',regs.ecx,' SkillId: ',skillId);
-}
-function HookUseSkillInfo(){Hooker.checkInfo(0xf90a40,function(regs){GetUseSkillInfo(regs)})}
-
-function GetCSPkgCode(regs)
-{
-	var pkgType=u16(regs.ebp+0xc);
-	var pkgBuffer=u32(regs.ebp+0x10);
-	print('1',pkgType);
-	
-	if(pkgType==37)
-	{
-		var dataSize=u16(regs.ebp+0x14);
-		var p=pkgBuffer;
-		for(var i=0;i<dataSize;i+=9)
-		{
-			print('id: ',u32(p),'Skid: ',u8(p+4),'hitcnt:',u16(p+5),'atkcnt:',u16(p+7));
-			p+=9;
-		}
-	}
-	else if(pkgType==50)
-	{
-		var dataSize=u16(regs.ebp+0x14);
-		var p=pkgBuffer;
-		for(var i=18;i<dataSize;i+=6)
-		{
-			print('idx: ',u16(p+i),'val: ',u32(p+i+2));
-			
-		}
-	}
-	else if(pkgType==202)
-	{
-		print('202!');
-	}
-}
-function GetCSPkgCode2(regs)
-{
-	var pkgType=u16(regs.esp+0xc+0x8);
-	var pkgBuffer=u32(regs.esp+0xc+0xc);
-	var dataSize=u16(regs.esp+0xc+0x10);
-	print('2',pkgType);
-	
-	if(pkgType==37)
-	{
-		var p=pkgBuffer;
-		for(var i=0;i<dataSize;i+=9)
-		{
-			print('id1: ',u32(p),'Skid: ',u8(p+4),'hitcnt:',u16(p+5),'atkcnt:',u16(p+7));
-			p+=9;
-		}
-	}
-	else if(pkgType==50)
-	{
-		var p=pkgBuffer;
-		for(var i=18;i<dataSize;i+=6)
-		{
-			print('idx1: ',u16(p+i),'val: ',u32(p+i+2));
-			
-		}
-	}
-	else if(pkgType==202)
-	{
-		print('202.1!');
-	}
-}
-function HookPackCSPkg(addr){Hooker.checkInfo(addr,function(regs){GetCSPkgCode(regs)})}
-function HookPackCSPkg2(addr){Hooker.checkInfo(addr,function(regs){GetCSPkgCode2(regs)})}
-
-function GetScanRpcp(regs)
-{
-	print('ret: ',u32(regs.esp));
-	var item=u32(regs.esp+4);
-	var names=['idx','off1','off2','off3','off4','len','isDec'];
-	var fmt='HIIIIHB';
-	var vals=unpack(_Mread(item,21),fmt,names);
-	var s='';
-	for(var i=0;i<vals.length;i++)
-	{
-		s+=vals[i][0]+': '+vals[i][1]+' ';
-	}
-	print(s);
-}
-
-function HookScanRpcp(addr){Hooker.checkInfo(addr,function(regs){GetScanRpcp(regs)})}
-
-function CheckEffect(regs)
-{
-	var objType=u32(regs.esp+8);
-	if(objType==0xf000)
-	{
-		var effObj=u32(regs.esp+0x10);
-		print('uid:',u16(regs.esp+0xc),'effId:',u32(effObj+0x35c));
-	}
-}
-function HookCheckEffect(addr){Hooker.checkInfo(addr,function(regs){CheckEffect(regs)})}
-
-function getPtrByUidAndType(uid,type)
-{
-	var t=u32(0x2c82dd8+0x24);
-	t=u32(t+0x20a020);
-	t=u32(t+0x90);
-	return callFunction(0x1035180,'stdcall',{ecx:t},type,uid);
-}
-
 function CheckVectorAdd(regs)
 {
 	var mapObj=u32(u32(0x2a95fe8)+0xb8);
@@ -428,7 +289,7 @@ function getMemoryBases(mm,addr)
 
 function listMemoriesWithAddr(addr)
 {
-	var mm=getMemoryBlocks(-1);
+	var mm=native.getMemoryBlocks(-1);
 	var ss=getMemoryBlock(mm,addr);
 	if(ss==undefined)
 	{
@@ -441,7 +302,7 @@ function listMemoriesWithAddr(addr)
 		print("can't find base.");
 		return;
 	}
-	displayObject(ss);
+	utils.displayObject(ss);
 }
 
 function CheckEsp(regs)
@@ -522,13 +383,6 @@ function myCheckVal2(regs,off,addr,serial)
 }
 function checkVal2(addr,off,serial){Hooker.checkInfo(addr,function(regs){myCheckVal2(regs,off,addr,serial)})}
 
-function hookVectorPush(){Hooker.checkInfo(0x018CA523,function(regs){
-	if(regs.ecx==u32(u32(0x2b0e000)+0x30a4))
-	{
-		CheckVal(regs);
-	}
-})}
-
 function getFingerprint(addr,size)
 {
 	var step=size/128;
@@ -537,7 +391,7 @@ function getFingerprint(addr,size)
 	var sum=0;
 	for(var i=0;i<128;i++)
 	{
-		var code=_Mread(cur,1).charCodeAt(0);
+		var code=mread(cur,1).charCodeAt(0);
 		cur+=step;
 		res1.push(code);
 		sum+=code;
@@ -617,7 +471,7 @@ function getImgInfo(name)
   }
 
   var h=getHash();
-  var getF=makeThisCallFunction(0x1dd36f0);
+  var getF=asm.makeThiscallFunction(0x1dd36f0);
   var ret=getF(0x02C6A430+0x1c,h,[(name+'\0').encode()],0);
   if(ret==0)
     return null;

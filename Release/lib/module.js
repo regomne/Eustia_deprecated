@@ -87,20 +87,24 @@ Module._load = function(request, parent, forceReload) {
     throw new Error("can't find module: "+request);
 
   var cacheKey=filename.toLowerCase();
+  var cachedModule = Module._cache[cacheKey];
   if(!forceReload)
   {
-    var cachedModule = Module._cache[cacheKey];
     if (cachedModule) {
       return cachedModule.exports;
     }
   }
 
   var module = new Module(filename, parent);
+  Module._cache[cacheKey] = module;
 
   try {
     module.load(filename);
-    Module._cache[cacheKey] = module;
   } catch(e) {
+    if(oldModule)
+      Module._cache[cacheKey]=cachedModule;
+    else
+      delete Module._cache[cacheKey];
     throw e;
   }
 

@@ -735,7 +735,7 @@ Handle<Context> InitV8()
         char* funcName;
         FunctionCallback callBack;
     } funcList[] = {
-        { "_SetProperty", SetProperty },
+        //{ "_SetProperty", SetProperty },
 
         { "_Print", Print },
         { "_LoadJS", LoadJS },

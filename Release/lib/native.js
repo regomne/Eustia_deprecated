@@ -41,18 +41,18 @@ exp.callFunction=function(addr,callType,regs) //其他参数附在后面
 	return _CallFunction(addr,rcallType,rregs,rargs);
 }
 
-exp.setProperty=function(obj,key,name,prop)
-{
-	var rProp=0;
-	if(prop!=undefined)
-	{
-		prop=prop.toString();
-		if(prop.search('r')!=-1) rProp|=1; //read only
-		if(prop.search('e')!=-1) rProp|=(1<<1); //don't enum
-		if(prop.search('d')!=-1) rProp|=(1<<2); //don't delete
-	}
-	_SetProperty(obj,key,name,rProp);
-}
+// exp.setProperty=function(obj,key,name,prop)
+// {
+// 	var rProp=0;
+// 	if(prop!=undefined)
+// 	{
+// 		prop=prop.toString();
+// 		if(prop.search('r')!=-1) rProp|=1; //read only
+// 		if(prop.search('e')!=-1) rProp|=(1<<1); //don't enum
+// 		if(prop.search('d')!=-1) rProp|=(1<<2); //don't delete
+// 	}
+// 	_SetProperty(obj,key,name,rProp);
+// }
 
 exp.disassemble=function (addr)
 {
@@ -156,6 +156,16 @@ exp.writeText=function (fname,buff,isUnicode)
 exp.existsFile=function (fname)
 {
 	return _ExistsFile(fname);
+}
+
+exp.checkInfoHook=function(addr)
+{
+	return _CheckInfoHook(addr);
+}
+
+exp.unhook=function(addr)
+{
+	return _Unhook(addr);
 }
 
 module.exports=exp;

@@ -1,9 +1,8 @@
-﻿var native=require('native');
-var CryptoJS=require('CryptoJS');
+﻿var CryptoJS=require('CryptoJS');
 
 module.exports=function(ggl)
 {
-native.setProperty(ggl.String.prototype,'repeat',function(n)
+Object.defineProperty(ggl.String.prototype,'repeat',{value:function(n)
 {
 	var a=[];
 	while(a.length<n)
@@ -11,18 +10,18 @@ native.setProperty(ggl.String.prototype,'repeat',function(n)
 		a.push(this);
 	}
 	return a.join('');
-},'ed');
+}});
 
-native.setProperty(ggl.String.prototype,'format',function(params)
+Object.defineProperty(ggl.String.prototype,'format',{value:function(params)
 {
 	var reg = /\{(\d+)\}/gm;
 	return this.replace(reg,function(match,name)
 	{
 		return params[~~name];
 	})
-},'de');
+}});
 
-native.setProperty(ggl.String.prototype,'ljust',function(n,ch)
+Object.defineProperty(ggl.String.prototype,'ljust',{value:function(n,ch)
 {
 	if(this.length>=n)
 		return this;
@@ -30,10 +29,10 @@ native.setProperty(ggl.String.prototype,'ljust',function(n,ch)
 	if(typeof(ch)!='string' || ch.length!=1)
 		ch=' ';
 	
-	return this+ch.repeat(n-this.length);
-},'de');
+	return this+ggl.String.prototype.repeat.call(ch,n-this.length);
+}});
 
-native.setProperty(ggl.String.prototype,'rjust',function(n,ch)
+Object.defineProperty(ggl.String.prototype,'rjust',{value:function(n,ch)
 {
 	if(this.length>=n)
 		return this;
@@ -41,23 +40,23 @@ native.setProperty(ggl.String.prototype,'rjust',function(n,ch)
 	if(typeof(ch)!='string' || ch.length!=1)
 		ch=' ';
 	
-	return ch.repeat(n-this.length)+this;
-},'de');
+	return ggl.String.prototype.repeat.call(ch,n-this.length)+this;
+}});
 
-native.setProperty(ggl.String.prototype,'startswith',function(s)
+Object.defineProperty(ggl.String.prototype,'startswith',{value:function(s)
 {
-	return (this.substring(0,s.length)==s);
-},'de');
+	return (this.slice(0,s.length)==s);
+}});
 
-native.setProperty(ggl.String.prototype,'decode',function()
+Object.defineProperty(ggl.String.prototype,'decode',{value:function()
 {
 	var C=CryptoJS;
 	return C.enc.Utf16LE.stringify(C.enc.Latin1.parse(this));
-},'de');
+}});
 
-native.setProperty(ggl.String.prototype,'encode',function()
+Object.defineProperty(ggl.String.prototype,'encode',{value:function()
 {
 	var C=CryptoJS;
 	return C.enc.Latin1.stringify(C.enc.Utf16LE.parse(this));
-},'de');
+}});
 }

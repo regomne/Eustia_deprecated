@@ -74,7 +74,7 @@ module.exports.isObjectSame=function (obj1,obj2)
 }
 
 
-module.exports.Convert={
+var Convert={
   toU32: function(s,off,be)
   {
     if(off==undefined)
@@ -255,3 +255,4 @@ module.exports.Convert={
   }
 };
 
+module.exports.Convert=Convert;

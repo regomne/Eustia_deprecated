@@ -1,36 +1,42 @@
-﻿function u32(addr)
+﻿var Convert=require('utils').Convert;
+var native=require('native');
+var mread=native.mread;
+var mwrite=native.mwrite;
+
+var exp={
+u32:function(addr)
 {
 	return Convert.toU32(mread(addr,4));
-}
-function u16(addr)
+},
+u16:function(addr)
 {
 	return Convert.toU16(mread(addr,2));
-}
-function u8(addr)
+},
+u8:function(addr)
 {
 	return mread(addr,1).charCodeAt(0);
-}
+},
 
-function wu32(addr,i)
+wu32:function(addr,i)
 {
 	mwrite(addr,Convert.fromU32(i));
-}
-function wu16(addr,i)
+},
+wu16:function(addr,i)
 {
 	mwrite(addr,Convert.fromU16(i));
-}
-function wu8(addr,i)
+},
+wu8:function(addr,i)
 {
 	mwrite(addr,String.fromCharCode(i&0xff));
-}
+},
 
-function ustr(addr,cnt)
+ustr:function(addr,cnt)
 {
 	var s=[];
 	if(cnt==undefined)
 	while(true)
 	{
-		var c=u16(addr);
+		var c=this.u16(addr);
 		if(c==0)
 			break;
 		addr+=2;
@@ -40,32 +46,35 @@ function ustr(addr,cnt)
 	{
 		while(cnt--)
 		{
-			var c=u16(addr);
+			var c=this.u16(addr);
 			addr+=2;
 			s.push(String.fromCharCode(c));
 		}
 	}
 	return s.join('');
-}
-function astr(addr)
+},
+astr:function(addr)
 {
 	var s=[];
 	while(true)
 	{
-		var c=_Mread(addr,1);
+		var c=mread(addr,1);
 		if(c=='\0')
 			break;
 		addr++;
 		s.push(c);
 	}
 	return s.join('');
-}
-function stlString(addr)
+},
+stlString:function(addr)
 {
-	var curLen=u32(addr+0x10);
-	var maxLen=u32(addr+0x14);
+	var curLen=this.u32(addr+0x10);
+	var maxLen=this.u32(addr+0x14);
 	if(maxLen<=7)
-		return ustr(addr,curLen);
+		return this.ustr(addr,curLen);
 	else
-		return ustr(u32(addr),curLen);
+		return this.ustr(this.u32(addr),curLen);
 }
+};
+
+module.exports=exp;

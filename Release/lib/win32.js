@@ -1,4 +1,7 @@
-﻿var Win32={
+﻿var asm=require('asm');
+var native=require('native');
+
+var Win32={
 	_apis:[
 		'kernel32.HeapAlloc',
 		'kernel32.HeapFree',
@@ -26,9 +29,9 @@
 		if(name.indexOf('.')!=-1)
 			newName=name.split('.')[1];
 		if(name[0]=='#')
-			this[newName]=makeCdeclFunction(getAPIAddress(name.slice(1)));
+			this[newName]=asm.makeCdeclFunction(native.getAPIAddress(name.slice(1)));
 		else
-			this[newName]=makeStdcallFunction(getAPIAddress(name));
+			this[newName]=asm.makeStdcallFunction(native.getAPIAddress(name));
 	}
 };
 
@@ -46,3 +49,5 @@ Win32.deleteMem=function(ptr)
 {
 	Win32.HeapFree(Win32.GetProcessHeap(),0,ptr);
 }
+
+module.exports=Win32;
