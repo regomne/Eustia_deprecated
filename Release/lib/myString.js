@@ -1,5 +1,9 @@
-﻿
-setProperty(String.prototype,'repeat',function(n)
+﻿var native=require('native');
+var CryptoJS=require('CryptoJS');
+
+module.exports=function(ggl)
+{
+native.setProperty(ggl.String.prototype,'repeat',function(n)
 {
 	var a=[];
 	while(a.length<n)
@@ -9,7 +13,7 @@ setProperty(String.prototype,'repeat',function(n)
 	return a.join('');
 },'ed');
 
-setProperty(String.prototype,'format',function(params)
+native.setProperty(ggl.String.prototype,'format',function(params)
 {
 	var reg = /\{(\d+)\}/gm;
 	return this.replace(reg,function(match,name)
@@ -18,7 +22,7 @@ setProperty(String.prototype,'format',function(params)
 	})
 },'de');
 
-setProperty(String.prototype,'ljust',function(n,ch)
+native.setProperty(ggl.String.prototype,'ljust',function(n,ch)
 {
 	if(this.length>=n)
 		return this;
@@ -29,7 +33,7 @@ setProperty(String.prototype,'ljust',function(n,ch)
 	return this+ch.repeat(n-this.length);
 },'de');
 
-setProperty(String.prototype,'rjust',function(n,ch)
+native.setProperty(ggl.String.prototype,'rjust',function(n,ch)
 {
 	if(this.length>=n)
 		return this;
@@ -40,19 +44,20 @@ setProperty(String.prototype,'rjust',function(n,ch)
 	return ch.repeat(n-this.length)+this;
 },'de');
 
-setProperty(String.prototype,'startswith',function(s)
+native.setProperty(ggl.String.prototype,'startswith',function(s)
 {
 	return (this.substring(0,s.length)==s);
 },'de');
 
-setProperty(String.prototype,'decode',function()
+native.setProperty(ggl.String.prototype,'decode',function()
 {
 	var C=CryptoJS;
 	return C.enc.Utf16LE.stringify(C.enc.Latin1.parse(this));
 },'de');
 
-setProperty(String.prototype,'encode',function()
+native.setProperty(ggl.String.prototype,'encode',function()
 {
 	var C=CryptoJS;
 	return C.enc.Latin1.stringify(C.enc.Utf16LE.parse(this));
 },'de');
+}

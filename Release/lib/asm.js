@@ -1,8 +1,10 @@
-﻿function printOneDisasm(addr)
+﻿var native=require('native');
+
+function printOneDisasm(addr)
 {
-	var dis=disassemble(addr);
+	var dis=native.disassemble(addr);
 	var opCodes='';
-	var bytes=mread(addr,dis.length);
+	var bytes=native.mread(addr,dis.length);
 	for(var i=0;i<dis.length;i++)
 	{
 		opCodes+=bytes.charCodeAt(i).toString(16).rjust(2,'0')+' ';

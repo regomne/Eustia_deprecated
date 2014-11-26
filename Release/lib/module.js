@@ -31,7 +31,10 @@ var path={
   },
 };
 
-var debug=print;
+var debug=function(){
+  if(LogLevel==5)
+    print.apply(this,arguments);
+};
 
 function Module(id, parent)
 {
@@ -61,14 +64,14 @@ Module._getFilename=function(req,par)
 
   if(par)
   {
-    if(existsFile(path.join(path.dirname(par.filename),req)))
+    if(_ExistsFile(path.join(path.dirname(par.filename),req)))
       return path.join(path.dirname(par.filename),req);
   }
 
-  for(var i=0;i<__path.length;i++)
+  for(var i=0;i<__Path.length;i++)
   {
-    var fname=path.join(__path[i],req);
-    if(existsFile(fname))
+    var fname=path.join(__Path[i],req);
+    if(_ExistsFile(fname))
       return fname;
   }
   return null;
@@ -167,7 +170,7 @@ function stripBOM(content) {
 }
 
 function loadJSModule(module, filename) {
-  var content = readText(filename);
+  var content = _ReadText(filename);
   module._compile(content, filename);
 };
 

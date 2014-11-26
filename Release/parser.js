@@ -1,3 +1,5 @@
+(function(){
+
 var Parser_js_disStartAddress=0x401000;
 var Parser_js_dataStartAddress=0x400000;
 
@@ -58,3 +60,7 @@ function ParseShortCmd(cmd)
 		print("Unknown short cmd!");
 	}
 }
+
+this.ParseShortCmd=ParseShortCmd;
+
+})();
