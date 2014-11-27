@@ -57,10 +57,10 @@ function cloneToGlobal(mod)
 load('module.js');
 
 var native=require('native');
+var cmdparser=require('cmdparser');
 var utils=require('utils');
 var asm=require('asm');
 var memory=require('memory');
-require('mystring')(global);
 cloneToGlobal(native);
 cloneToGlobal(utils);
 cloneToGlobal(asm);

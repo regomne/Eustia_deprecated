@@ -28,8 +28,151 @@ function printDisasms(addr,cnt)
 module.exports.printDisasms=printDisasms;
 
 
+var Hooker=(function(){
+	var dispatchDict={};
+	var hookList=[{}];
 
+	function addToList(addr,tag)
+	{
+		var info={addr:addr,tag:tag};
+		for(var i=1;i<hookList.length;i++)
+		{
+			if(hookList[i]==undefined)
+			{
+				hookList[i]=info;
+				return i;
+			}
+		}
+		hookList.push(info);
+		return hookList.length-1;
+	}
 
+	function removeFromList(addr)
+	{
+		for(var i=1;i<hookList.length;i++)
+		{
+			if(hookList[i].addr==addr)
+			{
+				delete hookList[i];
+				return;
+			}
+		}
+	}
+
+	function checkInfo(addr,hookfunc,tag)
+	{
+		addr=parseInt(addr);
+		if(dispatchDict[addr]!=undefined)
+			throw new Error("Can't hook one addr twice!");
+		dispatchDict[addr]=hookfunc;
+		var ret=native.checkInfoHook(addr);
+		if(ret)
+		{
+			return addToList(addr,tag);
+		}
+		else
+		{
+			delete dispatchDict[addr];
+			return false;
+		}
+	}
+	function unHook(addr)
+	{
+		native.unhook(parseInt(addr));
+		removeFromList(parseInt(addr));
+		delete dispatchDict[addr];
+	}
+	function unHookById(id)
+	{
+		if(id<hookList.length && id!=0)
+		{
+			var addr=hookList[id].addr;
+			if(addr!=undefined)
+			{
+				native.unhook(addr);
+				delete dispatchDict[addr];
+				delete hookList[id];
+			}
+		}
+	}
+	function unHookAll()
+	{
+		for(var addr in dispatchDict)
+		{
+			native.unhook(parseInt(addr));
+		}
+		dispatchDict={};
+		hookList=[{}];
+	}
+
+	function getHooks()
+	{
+		return hookList.slice(0);
+	}
+
+	function hasHook(addr)
+	{
+		return dispatchDict[addr]?true:false;
+	}
+
+	function parseRegs(regStrtPtr)
+	{
+		regStrt=native.mread(regStrtPtr,4*9);
+		arr=Convert.unpack(regStrt,'IIIIIIIII');
+		return {
+			eflags:arr[0],
+			edi:arr[1],
+			esi:arr[2],
+			ebp:arr[3],
+			esp:arr[4],
+			ebx:arr[5],
+			edx:arr[6],
+			ecx:arr[7],
+			eax:arr[8]
+		};
+	}
+	function reparseRegs(regsObj)
+	{
+		return Convert.pack('IIIIIIIII',
+			regsObj.eflags,
+			regsObj.edi,
+			regsObj.esi,
+			regsObj.ebp,
+			regsObj.esp,
+			regsObj.ebx,
+			regsObj.edx,
+			regsObj.ecx,
+			regsObj.eax
+		);
+	}
+	function dispatchCheckFunction(regs,srcAddr)
+	{
+		if(dispatchDict[srcAddr]!=undefined)
+		{
+			var regsObj=parseRegs(regs);
+			if(dispatchDict[srcAddr](regsObj)==true)
+			{
+				native.mwrite(regs,reparseRegs(regsObj));
+			}
+		}
+		else if(LogLevel>=2)
+		{
+			print('unk srcAddr in Hooker: '+srcAddr);
+		}
+	}
+
+	return {
+		checkInfo:checkInfo,
+		unHook:unHook,
+		unHookById:unHookById,
+		unHookAll:unHookAll,
+		getHooks:getHooks,
+		hasHook:hasHook,
+		dispatchCheckFunction:dispatchCheckFunction,
+	};
+
+})();
+/*
 module.exports.Hooker={
 	dispatchDict:{},
 	checkInfo:function(addr,hookfunc)
@@ -40,7 +183,7 @@ module.exports.Hooker={
 	},
 	unHook:function(addr)
 	{
-		native.unhook(addr);
+		native.unhook(parseInt(addr));
 		if(this.dispatchDict[addr]!=undefined)
 			delete this.dispatchDict[addr];
 	},
@@ -97,9 +240,9 @@ module.exports.Hooker={
 			print('unk srcAddr in Hooker: '+srcAddr);
 		}
 	}
-};
+};*/
 //necessary now
-root.Hooker=module.exports.Hooker;
+root.Hooker=module.exports.Hooker=Hooker;
 
 
 module.exports.Callback={

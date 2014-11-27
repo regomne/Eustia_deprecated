@@ -41,7 +41,7 @@ Platform* g_platform;
 void LoadInitJsFiles(Isolate* isolate)
 {
     auto context = isolate->GetCurrentContext();
-    auto parserJsFileName = g_dllPath + L"parser.js";
+    /*auto parserJsFileName = g_dllPath + L"parser.js";
     auto name = String::NewFromTwoByte(isolate, (uint16_t*)parserJsFileName.c_str());
     auto source = ReadJSFile(isolate, parserJsFileName.c_str());
     if (source.IsEmpty() || !ExecuteString(isolate, source, name, false, true) ||
@@ -49,13 +49,22 @@ void LoadInitJsFiles(Isolate* isolate)
     {
         OutputWriter::OutputInfo(L"parser.js faild, short cmd disabled.\n");
         EnableWindow(GetDlgItem(g_hDlgMain, IDC_INPUTCMD), FALSE);
-    }
+    }*/
     auto initJsFileName = g_dllPath + L"init.js";
-    name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
-    source = ReadJSFile(isolate, initJsFileName.c_str());
+    auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
+    auto source = ReadJSFile(isolate, initJsFileName.c_str());
     if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
     {
-        OutputWriter::OutputInfo(L"Init Success.");
+        OutputWriter::OutputInfo(L"Init Success.\r\n");
+        if (!context->Global()->Get(String::NewFromUtf8(isolate, "cmdparser"))->IsObject())
+        {
+            OutputWriter::OutputInfo(L"can't find cmdparser, short cmd disabled.\r\n");
+            EnableWindow(GetDlgItem(g_hDlgMain, IDC_INPUTCMD), FALSE);
+        }
+    }
+    else
+    {
+        OutputWriter::OutputInfo(L"Init failed\r\n");
     }
 
 }
@@ -195,9 +204,9 @@ bool AddParseString(shared_ptr<wchar_t>& text)
     bool hasDquote = (cmd.find(L'"') != wstring::npos);
     //bool hasEscape=(cmd.find(L'\\')!=wstring::npos);
     if (hasQuote && !hasDquote)
-        cmd = L"ParseShortCmd(\"" + cmd + L"\")";
+        cmd = L"cmdparser.parseShortCmd(\"" + cmd + L"\")";
     else if (!(hasDquote && hasQuote))
-        cmd = L"ParseShortCmd('" + cmd + L"')";
+        cmd = L"cmdparser.parseShortCmd('" + cmd + L"')";
     else
         return false;
     wcscpy(text.get(), cmd.c_str());
@@ -217,7 +226,7 @@ void ReadCmdAndExecute(HWND hEdit)
 
         //textLen+20 for ParseShortCmd(...);
         JSCommand cmd = {
-            shared_ptr<wchar_t>(new wchar_t[textLen + 20], [](wchar_t* p){delete[] p; }),
+            shared_ptr<wchar_t>(new wchar_t[textLen + 40], [](wchar_t* p){delete[] p; }),
             0
         };
         GetWindowText(hEdit, cmd.text.get(), textLen + 1);
@@ -226,14 +235,14 @@ void ReadCmdAndExecute(HWND hEdit)
         {
             OutputWriter::OutputInfo(L"$ ");
             OutputWriter::OutputInfo(cmd.text);
-            OutputWriter::OutputInfo(L"\n");
+            OutputWriter::OutputInfo(L"\r\n");
             auto buffer = itr->second;
             buffer->buffer.push_back(cmd.text.get());
             buffer->curIdx = buffer->buffer.size();
 
             if (!AddParseString(cmd.text))
             {
-                OutputWriter::OutputInfo(L"Can't covert short cmd!\n");
+                OutputWriter::OutputInfo(L"Can't covert short cmd!\r\n");
                 SetWindowText(hEdit, L"");
                 return;
             }
@@ -243,7 +252,7 @@ void ReadCmdAndExecute(HWND hEdit)
         {
             OutputWriter::OutputInfo(L"> ");
             OutputWriter::OutputInfo(cmd.text);
-            OutputWriter::OutputInfo(L"\n");
+            OutputWriter::OutputInfo(L"\r\n");
             auto buffer = itr->second;
             buffer->buffer.push_back(cmd.text.get());
             buffer->curIdx = buffer->buffer.size();

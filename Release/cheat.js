@@ -1,9 +1,9 @@
 load('dnf_def.js');
 load('quickfunc.js');
 var ROLEBASE=PLAYER_INFO_INDEX;
-var CATTACK_OFFSET=0x00fcb364;
-var CCOLLISION_OFFSET=0x0107a896;
-var SETHP_FUNC=0x0100E200;
+var CATTACK_OFFSET=0x00FCDCA4;
+var CCOLLISION_OFFSET=0x0107c436; //ccollisionresult
+var SETHP_FUNC=0x01010AC0; //hpcheat-XX
 var Convert=require('utils').Convert;
 //var GETTIME_IAT=0x22fb5cc;
 //var GAME_SCORE_BASE=0x2AAECE4; //be4ad9d7d33448f56e49ce2047d0521a

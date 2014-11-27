@@ -2,6 +2,7 @@ var native=require('native');
 var mread=native.mread;
 var mwrite=native.mwrite;
 cloneToGlobal(require('quickfunc'));
+require('mystring')(global);
 var asm=require('asm');
 var Hooker=asm.Hooker;
 cloneToGlobal(require('memory'));

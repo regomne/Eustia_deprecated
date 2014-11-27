@@ -831,7 +831,7 @@ bool ExecuteString(v8::Isolate* isolate,
         // the returned value.
         v8::String::Value str(result);
         auto cstr = ToWString(str);
-        OutputWriter::OutputInfo(L"%s\n", cstr);
+        OutputWriter::OutputInfo(L"%s\r\n", cstr);
     }
     return true;
 }

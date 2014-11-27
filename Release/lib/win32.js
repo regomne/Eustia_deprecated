@@ -1,5 +1,6 @@
 ﻿var asm=require('asm');
 var native=require('native');
+require('mystring')(global);
 
 var Win32={
 	_apis:[
@@ -49,5 +50,13 @@ Win32.deleteMem=function(ptr)
 {
 	Win32.HeapFree(Win32.GetProcessHeap(),0,ptr);
 }
+
+Win32.dbgOut=function(format){
+	var args=[];
+	for(var i=1;i<arguments.length;i++)
+		args.push(arguments[i]);
+	var s=(format.format.apply(format,[args])+'\0').encode();
+	Win32.OutputDebugStringW(s);
+};
 
 module.exports=Win32;
