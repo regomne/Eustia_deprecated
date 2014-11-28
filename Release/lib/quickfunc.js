@@ -4,6 +4,12 @@ var mread=native.mread;
 var mwrite=native.mwrite;
 
 var exp={
+
+hex:function(num)
+{
+	return parseInt(num).toString(16);
+},
+
 u32:function(addr)
 {
 	return Convert.toU32(mread(addr,4));

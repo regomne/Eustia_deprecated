@@ -2,6 +2,9 @@
 
 module.exports=function(ggl)
 {
+
+if(ggl.String.prototype.repeat!=undefined)
+	return;
 Object.defineProperty(ggl.String.prototype,'repeat',{value:function(n)
 {
 	var a=[];

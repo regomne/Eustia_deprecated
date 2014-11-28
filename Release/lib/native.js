@@ -168,4 +168,19 @@ exp.unhook=function(addr)
 	return _Unhook(addr);
 }
 
+exp.toFloat=function(val)
+{
+	return _ToFloat(val);
+}
+
+exp.toFloatp=function(p)
+{
+	return _ToFloatp(p);
+}
+
+exp.toDoublep=function(p)
+{
+	return _ToDoublep(p);
+}
+
 module.exports=exp;

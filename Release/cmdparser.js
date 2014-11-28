@@ -7,11 +7,79 @@ require('mystring')(global);
 var Parser_js_disStartAddress=0x401000;
 var Parser_js_dataStartAddress=0x400000;
 
-var ShortCmdTable={
-	cm1: 'mm1=native.getMemoryBlocks()',
-	cm2: 'mm2=native.getMemoryBlocks();rslt=memory.getNewExecuteMemory(mm1,mm2);memory.displayMemInfo(rslt.newExes)',
-	lf: 'load("myfunc.js")',
-	llib: 'Win32.LoadLibraryA("{0}")',
+function addCmd()
+{
+	if(arguments.length>=2)
+		ShortCmdTable[arguments[0]]=arguments[1];
+	else
+	{
+		var obj=arguments[0];
+		for(var k in obj)
+		{
+			ShortCmdTable[k]=obj[k];
+		}
+	}
+}
+module.exports.addCmd=addCmd;
+
+var ShortCmdTable=(function (){
+
+
+	return {
+
+	'.cm1': 'mm1=native.getMemoryBlocks()',
+	'.cm2': 'mm2=native.getMemoryBlocks();rslt=memory.getNewExecuteMemory(mm1,mm2);memory.displayMemInfo(rslt.newExes)',
+	'.lf': 'load("myfunc.js")',
+	'.llib': 'Win32.LoadLibraryA("{0}")',
+	'.hook' : function(addr){
+		if(arguments.length<2)
+		{
+			print('must have addr and exps!');
+			return;
+		}
+
+		var symbol='';
+		if(!(addr[0]>='0' && addr[0]<='9'))
+		{
+			symbol=addr;
+			addr=native.getAPIAddress(symbol);
+			if(!addr)
+			{
+				print("Can't find symbol:",symbol);
+				return;
+			}
+		}
+
+		if(asm.Hooker.hasHook(addr))
+		{
+			print(addr,'already hooked, please clear first');
+			return;
+		}
+
+		var args=[];
+		for(var i=1;i<arguments.length;i++)
+			args.push(arguments[i]);
+		var exp=args.join(' ');
+
+		var ret=asm.Hooker.checkInfo(parseInt(addr,16),asm.makeHookerFuncFromExp(exp),symbol);
+		if(ret)
+			print('id',ret,'hooked.');
+		else
+			print('hook failed.');
+	},
+	'.hl': function(){
+		var list=asm.Hooker.getHooks();
+		for(var i=1;i<list.length;i++)
+		{
+			var item=list[i];
+			if(item!=undefined)
+				print(i,item.addr,item.tag?item.tag:'');
+		}
+	},
+	'.hc': function(id){
+		asm.Hooker.unHookById(id);
+	},
+
 	us: 'asm.printOneDisasm(parseInt("{0}",16))',
 	u: function(addr)
 		{
@@ -38,7 +106,8 @@ var ShortCmdTable={
 			memory.printMem(addr,size);
 			Parser_js_dataStartAddress=addr+size;
 		},
-};
+	};
+})();
 
 function ParseShortCmd(cmd,ggl)
 {

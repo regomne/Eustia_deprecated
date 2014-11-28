@@ -13,7 +13,10 @@ module.exports.displayObject=function (obj,file)
       var val=obj[prop];
       if(typeof(val)!='object')
       {
-        s+=val.toString(16)+',\r\n';
+        if(typeof(val)=='number')
+          s+=val.toString(16)+',\r\n';
+        else
+          s+=val+',\r\n';
       }
       // else if(val instanceof Array)
       // {

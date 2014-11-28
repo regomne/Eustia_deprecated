@@ -132,7 +132,7 @@ function MyHook_(regs)
 }
 function subFunc(regs)
 {
-	var t=regs.ecx;
+	var t=u16(regs.ebx+1);
 	var buff=regs.ebx;
 	var size=u32(regs.ebp+RECV_UDP_PACKET_SIZE_OFFSET);
 	if(excludeList.indexOf(t)==-1)
@@ -154,7 +154,7 @@ function subFunc(regs)
     }
 	}
 }
-function HookRecv(){Hooker.checkInfo(0x191cb85,function(regs){subFunc(regs)})}
+function HookRecv(){Hooker.checkInfo(0x0191c593,function(regs){subFunc(regs)})}
 function HookSend(){Hooker.checkInfo(0x01917B80,function(regs){MyHook_(regs)})}
 
 var LastTime=0;

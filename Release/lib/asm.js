@@ -27,6 +27,26 @@ function printDisasms(addr,cnt)
 }
 module.exports.printDisasms=printDisasms;
 
+function makeHookerFuncFromExp(exp)
+{
+	var eles=exp.split('#').map(function(e){return e.split('@')});
+
+	return function(regs){
+		with(regs)
+		{
+			eles.forEach(function(ele){
+				if(ele[1])
+				{
+					if(eval(ele[1]))
+						print(eval(ele[0]));
+				}
+				else
+					print(eval(ele[0]));
+			});
+		}
+	};
+}
+module.exports.makeHookerFuncFromExp=makeHookerFuncFromExp;
 
 var Hooker=(function(){
 	var dispatchDict={};

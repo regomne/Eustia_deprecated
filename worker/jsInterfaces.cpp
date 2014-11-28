@@ -295,7 +295,7 @@ static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
     String::Value str(args[0]);
     auto pstr = (wchar_t *)*str;
     auto p = wcschr(pstr, L'.');
-    PVOID addr;
+    PVOID addr = 0;
     if (!p)
     {
         auto len = wcslen(pstr);
@@ -305,9 +305,7 @@ static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
         auto rslt = GetAPIAddress(0, cs.get(), &addr);
         if (!rslt)
         {
-            args.GetIsolate()->ThrowException(
-                v8::String::NewFromUtf8(args.GetIsolate(), "Can't find this api!"));
-            return;
+            addr = 0;
         }
     }
     else
@@ -325,9 +323,7 @@ static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
         auto rslt = GetAPIAddress(modName.get(), funcName.get(), &addr);
         if (!rslt)
         {
-            args.GetIsolate()->ThrowException(
-                v8::String::NewFromUtf8(args.GetIsolate(), "Can't find this api!"));
-            return;
+            addr = 0;
         }
     }
 
@@ -540,7 +536,7 @@ static void Print(const v8::FunctionCallbackInfo<v8::Value>& args) {
         auto cstr = ToWString(str);
         OutputWriter::OutputInfo(L"%s", cstr);
     }
-    OutputWriter::OutputInfo(L"\n");
+    OutputWriter::OutputInfo(L"\r\n");
 }
 // The callback that is invoked by v8 whenever the JavaScript 'read'
 // function is called.  This function loads the content of the file named in
@@ -723,6 +719,31 @@ static void ExistsFile(const v8::FunctionCallbackInfo<v8::Value>& args)
         isFile = false;
     args.GetReturnValue().Set(isFile);
 }
+
+static void ToFloat(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
+    auto val = args[0]->Uint32Value();
+    args.GetReturnValue().Set(Number::New(isolate, (double)(*(float*)&val)));
+}
+static void ToFloatp(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
+    auto val = args[0]->Uint32Value();
+    args.GetReturnValue().Set(Number::New(isolate, (double)*(float*)val));
+}
+static void ToDoublep(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
+    auto val = args[0]->Uint32Value();
+    args.GetReturnValue().Set(Number::New(isolate, *(double*)val));
+}
 Handle<Context> InitV8()
 {
     Isolate* isolate = Isolate::GetCurrent();
@@ -759,6 +780,10 @@ Handle<Context> InitV8()
         { "_DeleteMem", DeleteMem },
 
         { "_Disassemble", Disassmble },
+
+        { "_ToFloat", ToFloat},
+        { "_ToFloatp", ToFloatp },
+        { "_ToDoublep", ToDoublep },
 
     };
 

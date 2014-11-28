@@ -50,7 +50,7 @@ BOOL GetAPIAddress(wchar_t* moduleName, char* funcName, PVOID* addr)
         return TRUE;
     }
 
-    wchar_t* mods[] = { L"ntdll.dll", L"kernel32.dll", L"kernelbase.dll", L"user32.dll" };
+    wchar_t* mods[] = { L"ntdll.dll", L"kernel32.dll", L"kernelbase.dll", L"user32.dll", L"gdi32.dll" };
     for (int i = 0; i < sizeof(mods) / sizeof(wchar_t*); i++)
     {
         auto mod = GetModuleHandle(mods[i]);
