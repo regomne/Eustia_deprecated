@@ -28,7 +28,7 @@ static CommandBuffer g_CmdBuffer; //js ‰»Îª∫≥Â
 static CommandBuffer g_ShortCmdBuffer; //∂Ã√¸¡Óª∫≥Â
 map<HWND, CommandBuffer*> g_BufferSelector; //
 
-bool OutputWriter::isNotDisplay = false;
+OutputWriter::DispState OutputWriter::state_ = OutputWriter::Console;
 
 ConcurrentQueue<JSCommand> CommandQueue; //js√¸¡Ó∂”¡–
 
@@ -233,9 +233,12 @@ void ReadCmdAndExecute(HWND hEdit)
 
         if (isShortCmd)
         {
-            OutputWriter::OutputInfo(L"$ ");
-            OutputWriter::OutputInfo(cmd.text);
-            OutputWriter::OutputInfo(L"\r\n");
+            wstring output = L"$ ";
+            output += cmd.text.get();
+            output += L"\r\n";
+            OutputWriter::OutputInfo(output.c_str());
+            //OutputWriter::OutputInfo(cmd.text);
+            //OutputWriter::OutputInfo(L"\r\n");
             auto buffer = itr->second;
             buffer->buffer.push_back(cmd.text.get());
             buffer->curIdx = buffer->buffer.size();
@@ -250,9 +253,12 @@ void ReadCmdAndExecute(HWND hEdit)
         }
         else
         {
-            OutputWriter::OutputInfo(L"> ");
-            OutputWriter::OutputInfo(cmd.text);
-            OutputWriter::OutputInfo(L"\r\n");
+            wstring output = L"> ";
+            output += cmd.text.get();
+            output += L"\r\n";
+            OutputWriter::OutputInfo(output.c_str());
+            //OutputWriter::OutputInfo(cmd.text);
+            //OutputWriter::OutputInfo(L"\r\n");
             auto buffer = itr->second;
             buffer->buffer.push_back(cmd.text.get());
             buffer->curIdx = buffer->buffer.size();

@@ -584,7 +584,6 @@ static void WriteText(const v8::FunctionCallbackInfo<v8::Value>& args)
         return;
     }
 
-    int ret;
     BYTE tmp[0x1000];
     if (isTwoByte)
     {
@@ -744,6 +743,18 @@ static void ToDoublep(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto val = args[0]->Uint32Value();
     args.GetReturnValue().Set(Number::New(isolate, *(double*)val));
 }
+
+static void OutputStateGetter(Local<String> prop, const PropertyCallbackInfo<Value>& info)
+{
+    info.GetReturnValue().Set(Integer::New(info.GetIsolate(), (int)OutputWriter::GetOutputStream()));
+}
+
+static void OutputStateSetter(Local<String> prop, Local<Value> value, const PropertyCallbackInfo<void>& info)
+{
+    auto st = value->Uint32Value();
+    OutputWriter::ChangeOutputStream((OutputWriter::DispState)st);
+}
+
 Handle<Context> InitV8()
 {
     Isolate* isolate = Isolate::GetCurrent();
@@ -794,7 +805,7 @@ Handle<Context> InitV8()
 
     global->Set(v8::String::NewFromUtf8(isolate, "_DllPath"), v8::String::NewFromTwoByte(isolate, (uint16_t*)g_dllPath.c_str()));
     global->Set(v8::String::NewFromUtf8(isolate, "_MyWindowThreadId"), Integer::NewFromUnsigned(isolate,g_myWindowThreadId));
-
+    global->SetAccessor(String::NewFromUtf8(isolate, "_OutputState"), OutputStateGetter, OutputStateSetter);
     
     //g_globalTemplate = Persistent<ObjectTemplate, CopyablePersistentTraits<ObjectTemplate>>(isolate, global);
     //auto gl = Local<ObjectTemplate>::New(isolate, g_globalTemplate);

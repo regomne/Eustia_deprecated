@@ -1,7 +1,9 @@
 ﻿var native=require('native');
 var Convert=require('utils').Convert;
+var win32=require('win32');
 cloneObject(require('quickfunc'),global);
 require('mystring')(global);
+
 
 function printOneDisasm(addr)
 {
@@ -30,12 +32,17 @@ module.exports.printDisasms=printDisasms;
 
 // var quickObj={};
 // Object.defineProperty(quickObj,'chkstk',{get:function(){
-	
+
 // }})
 
-function makeHookerFuncFromExp(exp)
+function makeHookerFuncFromExp(exp,useDbgout)
 {
 	var eles=exp.split('#').map(function(e){return e.split('@')});
+	var output;
+	if(useDbgout)
+		output=win32.dbgOut;
+	else
+		output=print;
 
 	return function(regs){
 		with(regs)
@@ -44,10 +51,10 @@ function makeHookerFuncFromExp(exp)
 				if(ele[1])
 				{
 					if(eval(ele[1]))
-						print(eval(ele[0]));
+						output(eval(ele[0]));
 				}
 				else
-					print(eval(ele[0]));
+					output(eval(ele[0]));
 			});
 		}
 	};

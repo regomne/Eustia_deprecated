@@ -150,7 +150,9 @@ function subFunc(regs)
     if(t==0x4)
     {
     	print('recv4');
-      printMem(buff,size);
+      var flag=u32(buff+0x12);
+      var pflag=parseMoveFlag(flag);
+      pflag.forEach(function(ele){print(ele)});
     }
 	}
 }
@@ -480,4 +482,21 @@ function getImgInfo(name)
   var size=u32(ret+0xc);
   var npkname=stlString(u32(ret+0x10)+4);
   return [off,size,npkname];
+}
+
+function parseMoveFlag(flag)
+{
+  flag=flag&0xffffffff;
+  var x,y,z;
+  var v=[flag>>26,
+      (flag>>20)&0x3f,
+      (flag>>14)&0X3f,
+      (flag>>8)&0x3f];
+  x=v.map(function(ele){return (ele&3)});
+  y=v.map(function(ele){return ((ele>>2)&3)});
+  z=v.map(function(ele){return ((ele>>4)&3)});
+  x.push((flag>>5)&1);
+  y.push((flag>>5)&2);
+  z.push((flag>>5)&4);
+  return [x,y,z,((flag>>4)&1)];
 }

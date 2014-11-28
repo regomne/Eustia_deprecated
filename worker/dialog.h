@@ -52,11 +52,17 @@ void ProcessEngineMsg(MSG* msg);
 
 class OutputWriter
 {
-    static bool isNotDisplay;
 public:
+    enum DispState
+    {
+        Console = 1,
+        DbgView = (1 << 1),
+    };
+public:
+
     static void OutputInfo(std::shared_ptr<wchar_t> info)
     {
-        if (!isNotDisplay)
+        if (state_)
         {
             //int ndx = GetWindowTextLength(g_hOutputEdit);
             //SendMessage(g_hOutputEdit, EM_SETSEL, ndx, ndx);
@@ -64,12 +70,18 @@ public:
             int len = wcslen(info.get());
             auto buff = new wchar_t[len + 1];
             wcscpy(buff, info.get());
-            PostThreadMessage(g_UIThreadId, UIPROC_ADD_STRING, 0, (LPARAM)buff);
+            if (state_&Console)
+                PostThreadMessage(g_UIThreadId, UIPROC_ADD_STRING, 0, (LPARAM)buff);
+            if (state_&DbgView)
+            {
+                if (wcscmp(info.get(), L"\r\n") && wcscmp(info.get(),L"\n"))
+                    OutputDebugStringW(info.get());
+            }
         }
     }
-    static void OutputInfo(wchar_t *format, ...)
+    static void OutputInfo(const wchar_t *format, ...)
     {
-        if (!format || isNotDisplay)
+        if (!format || !state_)
             return;
 
         int maxLen = 0x1000;
@@ -95,9 +107,15 @@ public:
         std::shared_ptr<wchar_t> msgPtr(msg, [](wchar_t*p){delete[] p; });
         OutputInfo(msgPtr);
     }
-    static void ChangeDisplay(bool isDisplay)
+    static void ChangeOutputStream(DispState st)
     {
-        isNotDisplay = !isDisplay;
+        state_ = st;
     }
+    static DispState GetOutputStream()
+    {
+        return state_;
+    }
+private:
+    static DispState state_;
 };
 

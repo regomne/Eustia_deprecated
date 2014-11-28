@@ -2,6 +2,7 @@
 var native=require('native');
 var mread=native.mread;
 var mwrite=native.mwrite;
+var memory=require('memory');
 
 var exp={
 
@@ -42,7 +43,7 @@ ustr:function(addr,cnt)
 	if(cnt==undefined)
 	while(true)
 	{
-		var c=this.u16(addr);
+		var c=exp.u16(addr);
 		if(c==0)
 			break;
 		addr+=2;
@@ -52,7 +53,7 @@ ustr:function(addr,cnt)
 	{
 		while(cnt--)
 		{
-			var c=this.u16(addr);
+			var c=exp.u16(addr);
 			addr+=2;
 			s.push(String.fromCharCode(c));
 		}
@@ -74,13 +75,35 @@ astr:function(addr)
 },
 stlString:function(addr)
 {
-	var curLen=this.u32(addr+0x10);
-	var maxLen=this.u32(addr+0x14);
+	var curLen=exp.u32(addr+0x10);
+	var maxLen=exp.u32(addr+0x14);
 	if(maxLen<=7)
-		return this.ustr(addr,curLen);
+		return exp.ustr(addr,curLen);
 	else
-		return this.ustr(this.u32(addr),curLen);
-}
+		return exp.ustr(exp.u32(addr),curLen);
+},
+
+dmem:memory.printMem,
+
+chkstk:function(regs)
+{
+	//displayObject(regs);
+	var s='check: [esp] '+exp.u32(regs.esp).toString(16)+', [ebp]';
+	var curebp=regs.ebp;
+	var i=0;
+	while(i<12)
+	{
+		var last;
+		try{last=exp.u32(curebp+4);curebp=exp.u32(curebp);}
+		catch(e){break;}
+		// if(i==0)
+		// 	dumpMemory(-1,last&0xfffff000,0x1000,'c:/1.bin');
+		s=s+last.toString(16)+', ';
+		i++;
+	}
+	return s;
+},
+
 };
 
 module.exports=exp;
