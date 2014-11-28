@@ -52,12 +52,19 @@ function Module(id, parent)
 }
 
 Module._cache = {};
+Module._nameCache={};
+// var FastRequire=FastRequire||false;
 
 Module._getFilename=function(req,par)
 {
   req=req.replace('/','\\');
   if(req.slice(-3).toLowerCase()!='.js')
     req+='.js';
+
+  // if(FastRequire && Module._nameCache[req])
+  // {
+  //   return Module._nameCache[req];
+  // }
 
   if(req[1]==':' || req[0]=='\\')
     return req;

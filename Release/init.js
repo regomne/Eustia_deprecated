@@ -1,6 +1,7 @@
 ﻿var __time1=(new Date()).getTime();
 
 var LogLevel=4;
+//var FastRequire=false;
 var __Path=[_DllPath,_DllPath+'lib\\'];
 
 function print()
@@ -46,11 +47,11 @@ function load(fname)
 	return ret;
 }
 
-function cloneToGlobal(mod)
+function cloneObject(mod,ggl)
 {
 	for(var k in mod)
 	{
-		global[k]=mod[k];
+		ggl[k]=mod[k];
 	}	
 }
 
@@ -61,10 +62,10 @@ var cmdparser=require('cmdparser');
 var utils=require('utils');
 var asm=require('asm');
 var memory=require('memory');
-cloneToGlobal(native);
-cloneToGlobal(utils);
-cloneToGlobal(asm);
-cloneToGlobal(memory);
+cloneObject(native,global);
+cloneObject(utils,global);
+cloneObject(asm,global);
+cloneObject(memory,global);
 
 var __time2=(new Date()).getTime();
 if(LogLevel>=4)

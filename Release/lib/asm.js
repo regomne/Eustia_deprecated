@@ -1,5 +1,6 @@
 ﻿var native=require('native');
 var Convert=require('utils').Convert;
+cloneObject(require('quickfunc'),global);
 require('mystring')(global);
 
 function printOneDisasm(addr)
@@ -26,6 +27,11 @@ function printDisasms(addr,cnt)
 	return cur-addr;
 }
 module.exports.printDisasms=printDisasms;
+
+// var quickObj={};
+// Object.defineProperty(quickObj,'chkstk',{get:function(){
+	
+// }})
 
 function makeHookerFuncFromExp(exp)
 {
@@ -104,7 +110,7 @@ var Hooker=(function(){
 	}
 	function unHookById(id)
 	{
-		if(id<hookList.length && id!=0)
+		if(id!=0 && hookList[id]!=undefined)
 		{
 			var addr=hookList[id].addr;
 			if(addr!=undefined)

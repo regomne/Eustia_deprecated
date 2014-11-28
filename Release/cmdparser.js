@@ -2,6 +2,7 @@ var memory=require('memory');
 var native=require('native');
 var Win32=require('win32');
 var asm=require('asm');
+//cloneToGlobal(require('quickfunc'));
 require('mystring')(global);
 
 var Parser_js_disStartAddress=0x401000;
@@ -49,6 +50,10 @@ var ShortCmdTable=(function (){
 				return;
 			}
 		}
+		else
+		{
+			addr=parseInt(addr,16);
+		}
 
 		if(asm.Hooker.hasHook(addr))
 		{
@@ -61,7 +66,7 @@ var ShortCmdTable=(function (){
 			args.push(arguments[i]);
 		var exp=args.join(' ');
 
-		var ret=asm.Hooker.checkInfo(parseInt(addr,16),asm.makeHookerFuncFromExp(exp),symbol);
+		var ret=asm.Hooker.checkInfo(addr,asm.makeHookerFuncFromExp(exp),symbol);
 		if(ret)
 			print('id',ret,'hooked.');
 		else

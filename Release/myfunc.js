@@ -1,11 +1,11 @@
 var native=require('native');
 var mread=native.mread;
 var mwrite=native.mwrite;
-cloneToGlobal(require('quickfunc'));
+cloneObject(require('quickfunc'),global);
 require('mystring')(global);
 var asm=require('asm');
 var Hooker=asm.Hooker;
-cloneToGlobal(require('memory'));
+cloneObject(require('memory'),global);
 
 load('protocols.js');
 load('dnf_def.js');
