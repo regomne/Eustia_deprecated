@@ -1,4 +1,8 @@
-﻿var memory=require('memory');
+﻿/// @file cmdparser.js
+/// @brief cmd bar的处理器
+
+/// @cond
+var memory=require('memory');
 var native=require('native');
 var win32=require('win32');
 var asm=require('asm');
@@ -8,6 +12,19 @@ require('mystring')(global);
 var Parser_js_disStartAddress=0x401000;
 var Parser_js_dataStartAddress=0x400000;
 
+/// @endcond
+
+/// 为cmdbar增加一个或多个命令
+/// @code {.js}
+/// addCmd(cmd,processor)
+/// addCmd(procObj)
+/// @endcode
+/// @brief 为cmdbar增加一个或多个命令
+/// @param cmd 一个命令字符串
+/// @param processor 处理器，一个字符串或者一个函数
+/// @param procObj 一个形如{cmd1:processor1,cmd2:processor2}的对象
+/// @remark 命令处理器如果是字符串，则会在用户输入对应命令时通过eval执行该字符串，如果是函数，则会调用该函数。\n
+/// 跟在命令后面的参数，在处理器是字符串时，会依次替换字符串中的{\\d+}，而在处理器是函数时，会作为参数传入。
 function addCmd()
 {
 	if(arguments.length>=2)
@@ -21,17 +38,16 @@ function addCmd()
 		}
 	}
 }
-module.exports.addCmd=addCmd;
 
+/// @cond
 var ShortCmdTable=(function (){
 
-
 	return {
-
 	'.cm1': 'mm1=native.getMemoryBlocks()',
 	'.cm2': 'mm2=native.getMemoryBlocks();rslt=memory.getNewExecuteMemory(mm1,mm2);memory.displayMemInfo(rslt.newExes)',
 	'.lf': 'load("myfunc.js")',
 	'.llib': 'win32.LoadLibraryA("{0}")',
+
 	'.hook' : function(addr){
 		if(arguments.length<2)
 		{
@@ -140,3 +156,6 @@ function ParseShortCmd(cmd,ggl)
 }
 
 module.exports.parseShortCmd=ParseShortCmd;
+module.exports.addCmd=addCmd;
+
+/// @endcond

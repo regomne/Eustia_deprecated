@@ -1,10 +1,45 @@
-﻿var Convert=require('utils').Convert;
+﻿/// @file
+/// @brief 快速函数模块
+
+/// @cond
+var Convert=require('utils').Convert;
 var native=require('native');
 var mread=native.mread;
 var mwrite=native.mwrite;
 var memory=require('memory');
 var asm=require('asm');
+/// @endcond
 
+/// 转16进制
+/// @function hex(num)
+/// 读取dword
+/// @function u32(addr)
+/// 读取dword
+/// @function u32(addr)
+/// 读取word
+/// @function u16(addr)
+/// 读取byte
+/// @function u8(addr)
+/// 写入dword
+/// @function wu32(addr,i)
+/// 写入word
+/// @function wu16(addr,i)
+/// 写入byte
+/// @function wu8(addr,i)
+/// 读取unicode string，有cnt则读取cnt个字符，否则遇0终止
+/// @function ustr(addr,cnt)
+/// 读取ansi string，遇0终止
+/// @function astr(addr)
+/// 读取stl的string结构
+/// @function strString(addr)
+/// 列内存
+/// @function dmem(addr,size)
+/// ebp栈回溯，返回回溯结果字符串
+/// @function chkstk(regs)
+/// hook函数，注意第二个参数传递的是root内的函数名字字符串
+/// @function hook(addr,funcname,tag)
+
+/// @cond
 var exp={
 
 hex:function(num)
@@ -113,3 +148,4 @@ hook:function(addr,funcname,tag)
 };
 
 module.exports=exp;
+/// @endcond

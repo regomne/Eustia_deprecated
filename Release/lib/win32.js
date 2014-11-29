@@ -1,6 +1,33 @@
-﻿var asm=require('asm');
+﻿/// @file
+/// @brief windows API支持模块
+
+/// @cond
+var asm=require('asm');
 var native=require('native');
 require('mystring')(global);
+/// @endcond
+
+/// 为Win32命名空间增加一个API。
+/// @brief 为Win32命名空间增加一个API
+/// @param name 要获取的api模块名和导出名形如ntdll.ZwGetContextThread。其中ntdll,kernel32,user32,gdi32中的函数可以不写模块名
+/// @function Win32.add(name)
+
+/// 调用堆内存分配函数在进程堆内分配内存、
+/// @brief 调用堆内存分配函数在进程堆内分配内存
+/// @param size 内存大小
+/// @return 内存指针，分配失败抛出异常
+/// @function Win32.newMem(size)
+
+/// 释放进程堆内存上分配的内存。
+/// @brief 释放进程堆内存上分配的内存
+/// @param ptr 内存指针
+/// @function Win32.deleteMem(ptr)
+
+/// 在dbgView上输出信息。
+/// @brief 在dbgView上输出信息
+/// @param fmt 格式化字符串
+/// @param ... 根据格式化字符串需要的其他参数
+/// @function Win32.dbgOut(fmt)
 
 var Win32={
 	_apis:[

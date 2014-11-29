@@ -285,12 +285,7 @@ static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     HandleScope handleScope(isolate);
 
-    if (args.Length() != 1)
-    {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
-        return;
-    }
+    CHECK_ARGS_COUNT(1);
 
     String::Value str(args[0]);
     auto pstr = (wchar_t *)*str;

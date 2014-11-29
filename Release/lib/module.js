@@ -1,9 +1,11 @@
-﻿(function(){
+﻿
+
+(function(){
 
 var path={
   dirname: function(str)
   {
-    str=str.replace('/','\\');
+    str=str.replace(/\//g,'\\');
     var idx=str.lastIndexOf('\\');
     if(idx==-1)
       return '.';
@@ -11,7 +13,7 @@ var path={
   },
   basename: function(str)
   {
-    str=str.replace('/','\\');
+    str=str.replace(/\//g,'\\');
     var idx=str.lastIndexOf('\\');
     if(idx==-1)
       return str;
@@ -56,7 +58,7 @@ Module._nameCache={};
 
 Module._getFilename=function(req,par)
 {
-  req=req.replace('/','\\');
+  req=req.replace(/\//g,'\\');
   if(req.slice(-3).toLowerCase()!='.js')
     req+='.js';
 
@@ -179,11 +181,11 @@ Module.prototype._compile = function(content, filename) {
   }
 };
 
-
 function loadJSModule(module, filename) {
   var content = _ReadText(filename);
   module._compile(content, filename);
 };
+
 
 var rootModule=new Module('.',null);
 rootModule.filename=_DllPath+'!root';
@@ -192,6 +194,7 @@ root.module=rootModule;
 root.exports=rootModule.exports;
 root.__filename=_DllPath+'init.js';
 root.__dirname=_DllPath;
+
 
 root.require=function(name,forceReload)
 {

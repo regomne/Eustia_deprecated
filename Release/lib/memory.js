@@ -1,8 +1,18 @@
-﻿var Convert=require('utils').Convert;
+﻿/// @file memory.js
+/// @brief 内存操作相关的模块
+
+/// @cond
+var Convert=require('utils').Convert;
 var native=require('native');
 require('mystring')(global);
 
 var exp={};
+/// @endcond
+
+/// 计算可执行内存块hash（rpcs方案202号包使用）
+/// @brief 计算可执行内存块hash
+/// @param address 内存块起始地址
+/// @return 内存块hash
 function calcExeMemHash(address)
 {
 	function u32(addr)
@@ -36,8 +46,12 @@ function calcExeMemHash(address)
 		return h;
 	return apHash(native.mread(address,0x1000));
 }
-exp.calcExeMemHash=calcExeMemHash;
 
+/// 对比两个内存块快照，获得第二个内存块快照中新增和改变过大小的可执行模块。
+/// @brief 获得新增的可执行模块
+/// @param blocks1 原始的可执行内存块快照，可使用native.getMemoryBlocks函数获得
+/// @param blocks2 新的可执行内存块快照，可使用native.getMemoryBlocks函数获得
+/// @return 返回新增和改变的内存模块对象{newExes:{},newChanges{}}
 function getNewExecuteMemory(blocks1,blocks2)
 {
 	function getExecute(blocks)
@@ -99,8 +113,11 @@ function getNewExecuteMemory(blocks1,blocks2)
 	newExes.map(function(mm){mm.hash=calcExeMemHash(mm.baseAddress)});
 	return {newExes:newExes,newChanges:newChanges};
 }
-exp.getNewExecuteMemory=getNewExecuteMemory;
 
+/// dump指定进程的全部内存到指定目录中。其中每个内存块使用一个文件存储，文件以内存起始地址命名。
+/// @brief dump指定进程的全部内存到指定目录中
+/// @param handle 目标进程的句柄
+/// @param dir 要存放内存块的目录
 function dumpAllMem(handle,dir)
 {
 	mm=native.getMemoryBlocks(handle);
@@ -118,8 +135,11 @@ function dumpAllMem(handle,dir)
 	});
 	print('dump complete.');
 }
-exp.dumpAllMem=dumpAllMem;
 
+/// 计算一个字符串的hash（rpcs方案中的hash算法）。
+/// @brief 计算一个字符串的hash
+/// @param str 输入字符串
+/// @return 计算的hash
 function apHash(str)
 {
     var dwHash = 0;    
@@ -136,8 +156,10 @@ function apHash(str)
     return dwHash;
 	
 }
-exp.apHash=apHash;
 
+/// 显示一个内存块快照的内容。
+/// @brief 显示一个内存块快照的内容
+/// @param obj 内存块快照对象，可使用native.getMemoryBlocks函数获得
 function displayMemInfo(obj)
 {
 	obj.map(function(mm)
@@ -145,8 +167,12 @@ function displayMemInfo(obj)
 		print('start: ',mm.baseAddress,'\t\tsize: ',mm.regionSize,'\t\thash: ',mm.hash);
 	});
 }
-exp.displayMemInfo=displayMemInfo;
 
+/// 以十六进制方式打印一个指定字符串的内容，可指定长度和是否显示内存地址。
+/// @brief 以十六进制方式打印一个指定字符串的内容
+/// @param buff 字符串
+/// @param size 最长打印的长度
+/// @param addr 要显示的内存地址，即假定字符串起始位置是在该地址处。
 function printHex(buff,size,addr)
 {
 	var i=0;
@@ -167,14 +193,27 @@ function printHex(buff,size,addr)
 		print(s);
 	}
 }
-exp.printHex=printHex;
 
+/// 以十六进制方式打印指定内存处的内容。
+/// @brief 以十六进制方式打印指定内存处的内容
+/// @param addr 内存地址
+/// @param size 内存长度
 function printMem(addr,size)
 {
 	if(!size)
 		size=0x80;
 	printHex(native.mread(addr,size),size,addr);
 }
+
+/// @cond
 exp.printMem=printMem;
+exp.calcExeMemHash=calcExeMemHash;
+exp.printHex=printHex;
+exp.displayMemInfo=displayMemInfo;
+exp.apHash=apHash;
+exp.dumpAllMem=dumpAllMem;
+exp.getNewExecuteMemory=getNewExecuteMemory;
 
 module.exports=exp;
+
+/// @endcond

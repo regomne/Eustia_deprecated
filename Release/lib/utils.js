@@ -1,4 +1,76 @@
-﻿require('mystring')(global);
+﻿/// @file
+/// @brief 工具函数模块
+/// @cond
+require('mystring')(global);
+/// @endcond
+
+/// 显示对象。
+/// @brief 显示对象
+/// @param obj 要显示的对象
+/// @param file 如果是字符串则为将结果输出到文件中，如果是整数则代表最大递归的深度。
+/// @function displayObject(obj,file)
+
+/// 判断两个对象是否相等，缺少递归深度保护，不安全。
+/// @brief 判断两个对象是否相等
+/// @param obj1 对象1
+/// @param obj2 对象2
+/// @return 相等返回true，否则false
+/// @function isObjectSame(obj1,obj2)
+
+/// 字符串按字符转换到dword。
+/// @brief 字符串按字符转换到dword
+/// @param s 字符串
+/// @param off 起始偏移
+/// @param be 是否以big endian方式转换
+/// @return 转换后的dword
+/// @function Convert.toU32(s,off,be)
+
+/// 字符串按字符转换到word。
+/// @brief 字符串按字符转换到word
+/// @param s 字符串
+/// @param off 起始偏移
+/// @param be 是否以big endian方式转换
+/// @return 转换后的word
+/// @function Convert.toU16(s,off,be)
+
+/// dword转换到字符串。
+/// @brief dword转换到字符串
+/// @param i 整数
+/// @param be 是否以beg endian方式转换
+/// @return 转换后的字符串
+/// @function Convert.fromU32(i,be)
+
+/// word转换到字符串。
+/// @brief word转换到字符串
+/// @param i 整数
+/// @param be 是否以beg endian方式转换
+/// @return 转换后的字符串
+/// @function Convert.fromU16(i,be)
+
+/// 将字符串按照指定的规则unpack。\n
+/// 例如Convert.unpack('BBH','1234')即将字符串按照字节、字节、字的方式解开。
+/// @brief 将字符串按照指定的规则unpack
+/// @param str 待unpack的字符串
+/// @param format 解释规则，目前支持I:双字，H:字，B:字节
+/// @return unpack之后的数组
+/// @function Convert.unpack(str,format)
+
+/// 将字符串按照指定的规则unpack，并命名。\n
+/// 例如Convert.unpack('BBH','1234',['n1','n2','n3'])即将字符串按照字节、字节、字的方式解开，并分别返回名字。
+/// @brief 将字符串按照指定的规则unpack
+/// @param format 解释规则，目前支持I:双字，H:字，B:字节
+/// @param str 待unpack的字符串
+/// @param names 每个对应字段的名字
+/// @return unpack之后的数组，元素为名字和值的数组
+/// @function Convert.unpackN(str,format,names)
+
+/// 将数字按照指定规则组合成字符串。
+/// @brief 将数字按照指定规则组合成字符串
+/// @param format 解释规则，目前支持I:双字，H:字，B:字节
+/// @param ... 待pack的整数，数量由format决定
+/// @return pack之后的字符串
+/// @function Convert.pack(format)
+
 
 module.exports.displayObject=function (obj,file)
 {

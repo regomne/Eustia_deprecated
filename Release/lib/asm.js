@@ -1,10 +1,17 @@
-﻿var native=require('native');
+﻿/// @file asm.js
+/// @brief 与汇编、hook等相关的模块
+
+/// @cond
+var native=require('native');
 var Convert=require('utils').Convert;
 var win32=require('win32');
-cloneObject(require('quickfunc'),global);
+requireAll('quickfunc',global);
 require('mystring')(global);
+/// @endcond
 
-
+/// 反汇编一行指令，并输出
+/// @brief 反汇编一行指令
+/// @param addr 待反汇编的地址
 function printOneDisasm(addr)
 {
 	var dis=native.disassemble(addr);
@@ -17,8 +24,11 @@ function printOneDisasm(addr)
 	print(addr.toString(16).rjust(8,'0')+'  '+opCodes.ljust(24)+dis.string);
 	return dis.length;
 }
-module.exports.printOneDisasm=printOneDisasm;
 
+/// 反汇编指定字节数的指令，并输出
+/// @brief 反汇编指定长度的指令
+/// @param addr 待反汇编的地址
+/// @param cnt 待反汇编的字节长度（最长会超出15字节）
 function printDisasms(addr,cnt)
 {
 	var cur=addr;
@@ -28,13 +38,15 @@ function printDisasms(addr,cnt)
 	}
 	return cur-addr;
 }
-module.exports.printDisasms=printDisasms;
 
-// var quickObj={};
-// Object.defineProperty(quickObj,'chkstk',{get:function(){
-
-// }})
-
+/// 生成显示信息用的函数。\n
+/// 用于生成的指令由以下形式构成\n
+/// {exp1}[\@cond1]#{exp2}[\@cond2]#...\n
+/// 其中exp是用于print的表达式，@之后是可选的条件。每两个指令之间使用“#”隔开。\n
+/// 比如 @b eax\@ecx==0#u32(esp+4) 即为“在ecx为0的时候打印eax的值，并且总是打印dword ptr [esp+4]的值”。
+/// @brief 根据指令生成显示信息的函数
+/// @param exp 用于生成的指令表达式
+/// @return 生成的函数。
 function makeHookerFuncFromExp(exp)
 {
 	var eles=exp.split('#').map(function(e){return e.split('@')});
@@ -55,7 +67,45 @@ function makeHookerFuncFromExp(exp)
 		}
 	};
 }
-module.exports.makeHookerFuncFromExp=makeHookerFuncFromExp;
+
+/// hook指定地址，在执行到该地址时，转入指定的js函数，执行完毕之后返回原处继续执行，视返回值决定是否修改寄存器的值。
+/// @brief hook一个地址
+/// @param addr 待hook的地址
+/// @param func hook之后进入的函数
+/// @param tag 本hook的名字
+/// @return hook成功的话，返回此hook的全局唯一id，否则返回false
+/// @function Hooker.checkInfo(addr,func,tag)
+
+/// hook函数指定的回调函数，用在Hooker.checkInfo内。该函数接受一个寄存器结构，若函数返回true，则寄存器结构内的所有寄存器将会在返回前应用到真实寄存器中，否则忽略。
+/// @brief Hooker.checkInfo中使用的回调
+/// @param regs 寄存器对象，包括eax ecx edx ebx esp ebp esi edi eflags
+/// @return 是否设置寄存器值
+/// @function hookerProc(regs)
+
+/// unhook指定地址。
+/// @brief unhook指定地址
+/// @param addr 需要unhook的地址
+/// @function Hooker.unHook(addr)
+
+/// 通过id进行unhook。
+/// @brief 通过id进行unhook
+/// @param id 指定的id
+/// @function Hooker.unHookById(id)
+
+/// unhook所有hook点。
+/// @brief unhook所有hook点
+/// @function Hooker.unHookAll()
+
+/// 获取所有hook点列表，列表中每个元素为一个对象，形如{addr:0x1000,tag:'tag'}。
+/// @brief 获取所有hook点列表
+/// @function Hooker.getHooks()
+
+/// 判断指定地址是否有hook。
+/// @brief 判断指定地址是否有hook
+/// @param addr 指定的地址
+/// @return 如果有hook，返回true，否则false
+/// @function Hooker.hasHook(addr)
+
 
 var Hooker=(function(){
 	var dispatchDict={};
@@ -202,10 +252,22 @@ var Hooker=(function(){
 
 })();
 //necessary now
-root.Hooker=module.exports.Hooker=Hooker;
 
+/// 创建一个stdcall、cdecl或thiscall类型的JS函数，该函数可以通过x86指令call直接进行调用。
+/// @brief 创建一个可以由汇编代码直接调用的函数
+/// @param func 待调用的js函数
+/// @param argCnt 该函数需要的参数个数
+/// @param type 函数类型，可以为stdcall cdecl thiscall中的一个
+/// @return 生成的native函数
+/// @remark 生成的函数没有对重入的保护，如果发生递归调用，则会导致程序崩溃。
+/// @function Callback.newFunc(func,argCnt,type)
 
-module.exports.Callback={
+/// 删除一个native JS函数
+/// @brief 删除一个native JS函数
+/// @param addr 函数地址
+/// @function Callback.deleteFunc(addr)
+
+var Callback={
 	_dispatchDict:{length:0},
 	_addrDict:{},
 	_dispatchFunction:function(id,argsPtr,argCnt)
@@ -235,7 +297,12 @@ module.exports.Callback={
 	}
 };
 
-module.exports.makeThiscallFunction=function (addr)
+/// 根据函数地址生成__thiscall类型的函数，调用时第一个参数为ecx指针
+/// @brief 根据内存地址生成__thiscall函数
+/// @param addr 函数地址
+/// @return 生成的函数
+/// @remark 生成的函数在调用时可传递任意个数的参数，但是若数量错误可能会导致崩溃
+function makeThiscallFunction(addr)
 {
 	return function()
 	{
@@ -248,7 +315,12 @@ module.exports.makeThiscallFunction=function (addr)
 	}
 }
 
-module.exports.makeStdcallFunction=function (addr)
+/// 根据函数地址生成__stdcall类型的函数。
+/// @brief 根据内存地址生成__stdcall函数
+/// @param addr 函数地址
+/// @return 生成的函数
+/// @remark 生成的函数在调用时可传递任意个数的参数，但是若数量错误可能会导致崩溃
+function makeStdcallFunction(addr)
 {
 	return function()
 	{
@@ -261,7 +333,12 @@ module.exports.makeStdcallFunction=function (addr)
 	}
 }
 
-module.exports.makeCdeclFunction=function (addr)
+/// 根据函数地址生成__cdecl类型的函数。
+/// @brief 根据内存地址生成__cdecl函数
+/// @param addr 函数地址
+/// @return 生成的函数
+/// @remark 生成的函数在调用时可传递任意个数的参数，但是若数量错误可能会导致崩溃
+function makeCdeclFunction(addr)
 {
 	return function()
 	{
@@ -273,3 +350,19 @@ module.exports.makeCdeclFunction=function (addr)
 		return native.callFunction.apply(this,args);
 	}
 }
+
+/// @cond
+var exp={
+	printOneDisasm:printOneDisasm,
+	printDisasms:printDisasms,
+	makeHookerFuncFromExp:makeHookerFuncFromExp,
+	Hooker:Hooker,
+	Callback:Callback,
+	makeCdeclFunction:makeCdeclFunction,
+	makeStdcallFunction:makeStdcallFunction,
+	makeThiscallFunction:makeThiscallFunction,
+};
+module.exports=exp;
+root.Hooker=Hooker;
+
+/// @endcond
