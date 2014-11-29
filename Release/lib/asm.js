@@ -41,9 +41,9 @@ function printDisasms(addr,cnt)
 
 /// 生成显示信息用的函数。\n
 /// 用于生成的指令由以下形式构成\n
-/// {exp1}[\@cond1]#{exp2}[\@cond2]#...\n
-/// 其中exp是用于print的表达式，@之后是可选的条件。每两个指令之间使用“#”隔开。\n
-/// 比如 @b eax\@ecx==0#u32(esp+4) 即为“在ecx为0的时候打印eax的值，并且总是打印dword ptr [esp+4]的值”。
+/// {exp1}[\@cond1]\#{exp2}[\@cond2]\#...\n
+/// 其中exp是用于print的表达式，\@之后是可选的条件。每两个指令之间使用“\#”隔开。\n
+/// 比如 @b eax\@ecx==0\#u32(esp+4) 即为“在ecx为0的时候打印eax的值，并且总是打印dword ptr [esp+4]的值”。
 /// @brief 根据指令生成显示信息的函数
 /// @param exp 用于生成的指令表达式
 /// @return 生成的函数。
