@@ -35,14 +35,10 @@ module.exports.printDisasms=printDisasms;
 
 // }})
 
-function makeHookerFuncFromExp(exp,useDbgout)
+function makeHookerFuncFromExp(exp)
 {
 	var eles=exp.split('#').map(function(e){return e.split('@')});
-	var output;
-	if(useDbgout)
-		output=win32.dbgOut;
-	else
-		output=print;
+
 
 	return function(regs){
 		with(regs)
@@ -51,10 +47,10 @@ function makeHookerFuncFromExp(exp,useDbgout)
 				if(ele[1])
 				{
 					if(eval(ele[1]))
-						output(eval(ele[0]));
+						print(eval(ele[0]));
 				}
 				else
-					output(eval(ele[0]));
+					print(eval(ele[0]));
 			});
 		}
 	};
@@ -205,75 +201,6 @@ var Hooker=(function(){
 	};
 
 })();
-/*
-module.exports.Hooker={
-	dispatchDict:{},
-	checkInfo:function(addr,hookfunc)
-	{
-		addr=parseInt(addr);
-		this.dispatchDict[addr]=hookfunc;
-		return native.checkInfoHook(addr);
-	},
-	unHook:function(addr)
-	{
-		native.unhook(parseInt(addr));
-		if(this.dispatchDict[addr]!=undefined)
-			delete this.dispatchDict[addr];
-	},
-	unHookAll:function()
-	{
-		for(var addr in this.dispatchDict)
-		{
-			native.unhook(addr);
-		}
-		this.dispatchDict={};
-	},
-	parseRegs:function(regStrtPtr)
-	{
-		regStrt=native.mread(regStrtPtr,4*9);
-		arr=Convert.unpack(regStrt,'IIIIIIIII');
-		return {
-			eflags:arr[0],
-			edi:arr[1],
-			esi:arr[2],
-			ebp:arr[3],
-			esp:arr[4],
-			ebx:arr[5],
-			edx:arr[6],
-			ecx:arr[7],
-			eax:arr[8]
-		};
-	},
-	reparseRegs:function(regsObj)
-	{
-		return Convert.pack('IIIIIIIII',
-			regsObj.eflags,
-			regsObj.edi,
-			regsObj.esi,
-			regsObj.ebp,
-			regsObj.esp,
-			regsObj.ebx,
-			regsObj.edx,
-			regsObj.ecx,
-			regsObj.eax
-		);
-	},
-	dispatchCheckFunction:function(regs,srcAddr)
-	{
-		if(this.dispatchDict[srcAddr]!=undefined)
-		{
-			var regsObj=this.parseRegs(regs);
-			if(this.dispatchDict[srcAddr](regsObj)==true)
-			{
-				native.mwrite(regs,this.reparseRegs(regsObj));
-			}
-		}
-		else if(LogLevel>=2)
-		{
-			print('unk srcAddr in Hooker: '+srcAddr);
-		}
-	}
-};*/
 //necessary now
 root.Hooker=module.exports.Hooker=Hooker;
 

@@ -53,7 +53,6 @@ function Module(id, parent)
 
 Module._cache = {};
 Module._nameCache={};
-// var FastRequire=FastRequire||false;
 
 Module._getFilename=function(req,par)
 {
@@ -61,27 +60,38 @@ Module._getFilename=function(req,par)
   if(req.slice(-3).toLowerCase()!='.js')
     req+='.js';
 
-  // if(FastRequire && Module._nameCache[req])
-  // {
-  //   return Module._nameCache[req];
-  // }
+  if(root.FastRequire && Module._nameCache[req.toLowerCase()])
+  {
+    return Module._nameCache[req.toLowerCase()];
+  }
+
+  var finalName=null;
 
   if(req[1]==':' || req[0]=='\\')
-    return req;
+    finalName=req;
 
-  if(par)
+  else if(par && _ExistsFile(path.join(path.dirname(par.filename),req)))
   {
-    if(_ExistsFile(path.join(path.dirname(par.filename),req)))
-      return path.join(path.dirname(par.filename),req);
+      finalName=path.join(path.dirname(par.filename),req);
   }
+  else
+  {
 
-  for(var i=0;i<__Path.length;i++)
-  {
-    var fname=path.join(__Path[i],req);
-    if(_ExistsFile(fname))
-      return fname;
+    for(var i=0;i<__Path.length;i++)
+    {
+      var fname=path.join(__Path[i],req);
+      if(_ExistsFile(fname))
+      {
+        finalName=fname;
+        break;
+      }
+    }
   }
-  return null;
+  if(finalName)
+  {
+    Module._nameCache[req.toLowerCase()]=finalName;
+  }
+  return finalName;
 }
 
 Module._load = function(request, parent, forceReload) {
@@ -163,22 +173,12 @@ Module.prototype._compile = function(content, filename) {
     sandbox.__dirname = dirname;
     sandbox.module = self;
     sandbox.global = sandbox;
-    sandbox.root = global;
+    sandbox.root = root;
 
     _ImportJS(sandbox, content, filename);
   }
 };
 
-
-function stripBOM(content) {
-  // Remove byte order marker. This catches EF BB BF (the UTF-8 BOM)
-  // because the buffer-to-string conversion in `fs.readFileSync()`
-  // translates it to FEFF, the UTF-16 BOM.
-  if (content.charCodeAt(0) === 0xFEFF) {
-    content = content.slice(1);
-  }
-  return content;
-}
 
 function loadJSModule(module, filename) {
   var content = _ReadText(filename);
@@ -188,9 +188,12 @@ function loadJSModule(module, filename) {
 var rootModule=new Module('.',null);
 rootModule.filename=_DllPath+'!root';
 
-this.module=rootModule;
+root.module=rootModule;
+root.exports=rootModule.exports;
+root.__filename=_DllPath+'init.js';
+root.__dirname=_DllPath;
 
-this.require=function(name,forceReload)
+root.require=function(name,forceReload)
 {
   return Module._load(name,rootModule,forceReload);
 }

@@ -1,6 +1,6 @@
 var memory=require('memory');
 var native=require('native');
-var Win32=require('win32');
+var win32=require('win32');
 var asm=require('asm');
 //cloneToGlobal(require('quickfunc'));
 require('mystring')(global);
@@ -31,7 +31,7 @@ var ShortCmdTable=(function (){
 	'.cm1': 'mm1=native.getMemoryBlocks()',
 	'.cm2': 'mm2=native.getMemoryBlocks();rslt=memory.getNewExecuteMemory(mm1,mm2);memory.displayMemInfo(rslt.newExes)',
 	'.lf': 'load("myfunc.js")',
-	'.llib': 'Win32.LoadLibraryA("{0}")',
+	'.llib': 'win32.LoadLibraryA("{0}")',
 	'.hook' : function(addr){
 		if(arguments.length<2)
 		{
@@ -85,6 +85,7 @@ var ShortCmdTable=(function (){
 		asm.Hooker.unHookById(id);
 	},
 
+	load:'load("{0}")',
 	us: 'asm.printOneDisasm(parseInt("{0}",16))',
 	u: function(addr)
 		{

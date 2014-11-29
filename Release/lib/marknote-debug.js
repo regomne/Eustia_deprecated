@@ -2164,3 +2164,5 @@ marknote.Writer.prototype.outputContents = function (parentElem, level, indent) 
     }
     return output;
 };
+
+module.exports.marknote=marknote;

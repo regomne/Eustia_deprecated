@@ -3,6 +3,7 @@ var native=require('native');
 var mread=native.mread;
 var mwrite=native.mwrite;
 var memory=require('memory');
+var asm=require('asm');
 
 var exp={
 
@@ -103,6 +104,11 @@ chkstk:function(regs)
 	}
 	return s;
 },
+
+hook:function(addr,func,tag)
+{
+	return asm.Hooker.checkInfo(addr,function(regs){return func(regs)},tag);
+}
 
 };
 

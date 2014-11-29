@@ -1,7 +1,8 @@
 ﻿var __time1=(new Date()).getTime();
 
 var LogLevel=4;
-//var FastRequire=false;
+var FastRequire=true; //make 'require' load a module without looking for the module file
+var root=global;
 var __Path=[_DllPath,_DllPath+'lib\\'];
 
 function print()
@@ -55,6 +56,12 @@ function cloneObject(mod,ggl)
 	}	
 }
 
+function requireAll(name,ggl,reload)
+{
+	var mod=require(name,reload);
+	cloneObject(mod,ggl);
+}
+
 load('module.js');
 
 var native=require('native');
@@ -62,6 +69,7 @@ var cmdparser=require('cmdparser');
 var utils=require('utils');
 var asm=require('asm');
 var memory=require('memory');
+
 cloneObject(native,global);
 cloneObject(utils,global);
 cloneObject(asm,global);

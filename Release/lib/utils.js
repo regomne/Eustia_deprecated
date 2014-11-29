@@ -2,9 +2,12 @@ require('mystring')(global);
 
 module.exports.displayObject=function (obj,file)
 {
+  var maxLevel=(typeof(file)=='number')?file:5;
   function display_(obj,level)
   {
     var indentStr='\t'.repeat(level);
+    if(level>maxLevel)
+      return indentStr+'!!level too deep';
     var s=indentStr+'{\r\n';
     indentStr=indentStr+'\t';
     for(var prop in obj)

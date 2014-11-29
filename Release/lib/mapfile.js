@@ -1,6 +1,9 @@
+var native=require('native');
+require('mystring')(global);
+
 function readMapFile(fname)
 {
-	var ls=readText(fname).split('\r\n');
+	var ls=native.readText(fname).split('\r\n');
 	var bgLine=-1;
 	for(var i=0;i<ls.length;i++)
 	{
@@ -32,3 +35,5 @@ function readMapFile(fname)
 	}
 	return maps;
 }
+
+module.exports.readMapFile=readMapFile;

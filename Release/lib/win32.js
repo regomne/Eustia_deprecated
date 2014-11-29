@@ -30,9 +30,19 @@ var Win32={
 		if(name.indexOf('.')!=-1)
 			newName=name.split('.')[1];
 		if(name[0]=='#')
-			this[newName]=asm.makeCdeclFunction(native.getAPIAddress(name.slice(1)));
+		{
+			var addr=native.getAPIAddress(name.slice(1));
+			if(!addr)
+				throw new Error("Can't find api");
+			this[newName]=asm.makeCdeclFunction(addr);
+		}
 		else
-			this[newName]=asm.makeStdcallFunction(native.getAPIAddress(name));
+		{
+			var addr=native.getAPIAddress(name);
+			if(!addr)
+				throw new Error("Can't find api");
+			this[newName]=asm.makeStdcallFunction(addr);
+		}
 	}
 };
 

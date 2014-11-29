@@ -171,6 +171,8 @@ exp.printHex=printHex;
 
 function printMem(addr,size)
 {
+	if(!size)
+		size=0x80;
 	printHex(native.mread(addr,size),size,addr);
 }
 exp.printMem=printMem;

@@ -1,6 +1,6 @@
-﻿load('script/mapfile.js');
+﻿var readMapFile=require('mapfile').readMapFile;
 load('dnf_def.js');
-load('script/quickfunc.js');
+requireAll('quickfunc',global);
 
 var Analyzer={
     init:function(startAddr,region,newBranch)
