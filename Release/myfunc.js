@@ -1,4 +1,4 @@
-var native=require('native');
+﻿var native=require('native');
 var mread=native.mread;
 var mwrite=native.mwrite;
 cloneObject(require('quickfunc'),global);

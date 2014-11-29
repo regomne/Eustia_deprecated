@@ -1,4 +1,4 @@
-load('dnf_def.js');
+﻿load('dnf_def.js');
 load('quickfunc.js');
 var ROLEBASE=PLAYER_INFO_INDEX;
 var CATTACK_OFFSET=0x00FCDCA4;

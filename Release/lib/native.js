@@ -1,6 +1,6 @@
-
+ï»¿
 var exp={};
-exp.callFunction=function(addr,callType,regs) //ÆäËû²ÎÊı¸½ÔÚºóÃæ
+exp.callFunction=function(addr,callType,regs) //å…¶ä»–å‚æ•°é™„åœ¨åé¢
 {
 	var rcallType=0;
 	switch(callType)

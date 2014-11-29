@@ -1,4 +1,4 @@
-var native=require('native');
+﻿var native=require('native');
 require('mystring')(global);
 
 function readMapFile(fname)

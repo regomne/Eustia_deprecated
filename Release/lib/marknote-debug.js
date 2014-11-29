@@ -1,4 +1,4 @@
-/*
+﻿/*
    marknote-debug.js
    
    Unmimified copy of Marknote - for debugging with a tool such as Firebug.

@@ -1,4 +1,4 @@
-(function(){
+﻿(function(){
 
 var path={
   dirname: function(str)

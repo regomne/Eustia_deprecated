@@ -1,4 +1,4 @@
-var memory=require('memory');
+﻿var memory=require('memory');
 var native=require('native');
 var win32=require('win32');
 var asm=require('asm');

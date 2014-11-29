@@ -105,9 +105,9 @@ chkstk:function(regs)
 	return s;
 },
 
-hook:function(addr,func,tag)
+hook:function(addr,funcname,tag)
 {
-	return asm.Hooker.checkInfo(addr,function(regs){return func(regs)},tag);
+	return asm.Hooker.checkInfo(addr,function(regs){return eval('root.'+funcname)(regs)},tag);
 }
 
 };

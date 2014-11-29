@@ -1,4 +1,4 @@
-require('mystring')(global);
+﻿require('mystring')(global);
 
 module.exports.displayObject=function (obj,file)
 {
