@@ -76,14 +76,14 @@ function CheckVal(regs)
 }
 function ChkVal(addr){Hooker.checkInfo(addr,function(regs){CheckVal(regs)})}
 
+var ImgMap={};
+var ImgCnt=0;
 function newRunChk(regs,addr)
 {
 	//Win32.OutputDebugStringW(u32(u32(regs.esp+4)+4));
-  if(u32(regs.esp+4)==0xb40)
-  {
-    CheckVal(regs);
-    print('size: ',u32(regs.esp+0xc));
-  }
+  var img=ustr(u32(regs.esp+4))
+  if(img.toLowerCase().endswith('missile.img'))
+    ;
     // var item=u32(regs.esp);
     // if(u16(item)==701)
     //     print(regs.eax);
@@ -153,6 +153,29 @@ function subFunc(regs)
       var flag=u32(buff+0x12);
       var pflag=parseMoveFlag(flag);
       pflag.forEach(function(ele){print(ele)});
+      var curp=0x16;
+      for(var i=0;i<2;i++)
+      {
+        for(var j=0;j<3;j++)
+        {
+          if(!pflag[j][i])
+          {
+            print(native.toFloatp(buff+curp).toString())
+            curp+=4;
+          }
+        }
+      }
+      for(var i=2;i<4;i++)
+      {
+        for(var j=0;j<3;j++)
+        {
+          if(!pflag[j][i])
+          {
+            print((u32(buff+curp)&0xffffffff).toString())
+            curp+=4;
+          }
+        }
+      }
     }
 	}
 }
@@ -170,7 +193,7 @@ function myUdpSend(regs)
 		return false;
 	}
 	var udpBuff=regs.edi;
-	if(udpBuff<1000 || u8(udpBuff+UDP_PACKET_FLAG_OFFSET)!=2)
+	if(udpBuff<1000)
 	{
 		return;
 	}
@@ -182,7 +205,56 @@ function myUdpSend(regs)
 	if(filter(pkId,udpBuff))
 	{
     //print('id:',pkId,'size',pkSize);
-		if(pkId==0x3f)
+    if(pkId==0x4)
+    {
+      var buff=udpBuff;
+      var objType=u16(udpBuff+0x8);
+      var objUid=u16(udpBuff+0xa);
+      //printMem(buff,0x10);
+      var flag=u32(udpBuff+0x12);
+      var pflag=parseMoveFlag(flag);
+      pflag.forEach(function(ele){print(ele)});
+      var curp=0x16;
+      /*
+      for(var i=0;i<2;i++)
+      {
+        for(var j=0;j<3;j++)
+        {
+          if(!pflag[j][i])
+          {
+            print(native.toFloatp(buff+curp).toString())
+            curp+=4;
+          }
+        }
+      }
+      for(var i=2;i<4;i++)
+      {
+        for(var j=0;j<3;j++)
+        {
+          if(!pflag[j][i])
+          {
+            print((u32(buff+curp)&0xffffffff).toString())
+            curp+=4;
+          }
+        }
+      }
+      */
+      var x,y;
+      if(!pflag[0][0])
+      {
+        x=toFloatp(buff+curp)
+        curp+=4;
+      }
+      if(!pflag[1][0])
+      {
+        y=toFloatp(buff+curp);
+        curp+=4;
+      }
+      if(objType==0x211 && (x!=undefined || y!=undefined))
+        CacheMoveInfo(objUid,x,y);
+
+    }
+    else if(pkId==0x3f)
     {
       //print('3f being sent.');
       wu32(sendMgr+UDP_PACKET_BUFF_END_OFFSET,udpBuff);
@@ -199,7 +271,7 @@ function myUdpSend(regs)
     }
 	}
 }
-function hookUdpSend(){Hooker.checkInfo(0x1919467,function(regs){myUdpSend(regs)})}
+function hookUdpSend(){Hooker.checkInfo(0x01918EE7,function(regs){myUdpSend(regs)})}
 
 function myTcpSend(regs)
 {
@@ -499,4 +571,103 @@ function parseMoveFlag(flag)
   y.push((flag>>5)&2);
   z.push((flag>>5)&4);
   return [x,y,z,((flag>>4)&1)];
+}
+
+//key: uid, val:{curx,cury,dist}
+var cachedMonster={};
+function CacheMoveInfo(uid,x,y)
+{
+  print('cache: ',uid);
+  function getDist(x1,y1,x2,y2)
+  {
+    if(x1==undefined)
+    {
+      if(y2==undefined || y1==undefined)
+        return 0;
+      return Math.abs(y2-y1);
+    }
+    else if(y1==undefined)
+    {
+      if(x2==undefined || x1==undefined)
+        return 0;
+      return Math.abs(x2-x1);
+    }
+    else
+    {
+      if(x2==undefined)
+        return Math.abs(y2-y1);
+      if(y2==undefined)
+        return Math.abs(x2-x1);
+      return Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
+    }
+  }
+  var mst=cachedMonster[uid];
+  if(!mst)
+  {
+    mst={curx:x,cury:y,dist:0};
+    cachedMonster[uid]=mst;
+    return;
+  }
+  mst.dist+=getDist(mst.curx,mst.cury,x,y);
+  if(x!=undefined)
+    mst.curx=x;
+  if(y!=undefined)
+    mst.cury=y;
+}
+
+function getObjTypeByPtr(ptr)
+{
+  var type=u32(ptr+OBJECT_TYPE_OFFSET);
+  if(type!=TYPE_APC && type!=TYPE_STRIKER && type!=TYPE_MONSTER)
+  {
+    type=u32(ptr+TYPE_OFFSET);
+  }
+  return type;
+}
+
+function getTopCaster(att)
+{
+  var top=att;
+  while(top!=0)
+  {
+    topType=getObjTypeByPtr(top)
+    if(topType!=TYPE_SPRITE && ((topType&TYPE_EFFECT)!=TYPE_EFFECT))
+    {
+      break;
+    }
+    top=u32(att+CASTER_OFFSET);
+  }
+  return top;
+}
+
+function enumMap(map,func)
+{
+    function midTrav(ele)
+    {
+        if(ele!=0 && u8(ele+0x15)!=1)
+        {
+            midTrav(u32(ele));
+            func(u32(ele+0xc),u32(ele+0x10));
+            midTrav(u32(ele+8));
+        }
+    }
+    
+    var endMap=u32(map+8);
+    var head=u32(endMap+4);
+    midTrav(head);
+}
+
+function getEffectMap(regs)
+{
+  var att=u32(regs.ebp+8);
+  var top=getTopCaster(att);
+  if(top!=att)
+  {
+    //effect
+    var id=u32(att+EFFECTID_OFFSET)
+    enumMap(0x2dcbc28,function(key,val){
+      if(key==id)
+        print(id,ustr(val));
+    });
+  }
 }

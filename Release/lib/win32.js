@@ -4,6 +4,7 @@
 /// @cond
 var asm=require('asm');
 var native=require('native');
+requireAll('quickfunc',global);
 require('mystring')(global);
 /// @endcond
 
@@ -95,5 +96,43 @@ Win32.dbgOut=function(format){
 	var s=(format.format.apply(format,[args])+'\0').encode();
 	Win32.OutputDebugStringW(s);
 };
+
+Win32.struct=function(defs,addr)
+{
+	for(var name in defs)
+	{
+		var def=defs[name];
+		var rfunc=null;
+		var wfunc=null;
+		var daddr=addr+def.offset;
+		switch(def.type)
+		{
+		case 'I':
+			rfunc=u32;
+			wfunc=wu32;
+			break;
+		case 'H':
+			func=u16;
+			wfunc=wu16;
+			break;
+		case 'B':
+			func=u8;
+			wfunc=wu8;
+			break;
+		}
+		Object.defineProperty(this,name,{
+			get:function()
+			{
+				return rfunc(daddr);
+			},
+			set:function(val)
+			{
+				wfunc(daddr,val);
+			}
+		});
+	}
+}
+
+
 
 module.exports=Win32;

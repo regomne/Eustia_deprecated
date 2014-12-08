@@ -39,7 +39,13 @@
 /// 判断字符串是否以指定字符串开始。
 /// @brief 判断字符串是否以指定字符串开始
 /// @param s 判断字符串
-/// @return 新的字符串
+/// @return 是为true，否则false
+/// @function String.startswith(s)
+
+/// 判断字符串是否以指定字符串结束。
+/// @brief 判断字符串是否以指定字符串结束
+/// @param s 判断字符串
+/// @return 是为true，否则false
 /// @function String.startswith(s)
 
 /// 将字符串转换成utf16编码，即将每个字符的16位unicode编码中，每8个字节产生一个新的字符组成新的字符串。使用Little Endian方式编码。
@@ -104,6 +110,11 @@ Object.defineProperty(ggl.String.prototype,'rjust',{value:function(n,ch)
 Object.defineProperty(ggl.String.prototype,'startswith',{value:function(s)
 {
 	return (this.slice(0,s.length)==s);
+}});
+
+Object.defineProperty(ggl.String.prototype,'endswith',{value:function(s)
+{
+	return (this.slice(0-s.length)==s);
 }});
 
 Object.defineProperty(ggl.String.prototype,'decode',{value:function()

@@ -1,5 +1,5 @@
 ﻿load('dnf_def.js');
-load('quickfunc.js');
+requireAll('quickfunc',global);
 var ROLEBASE=PLAYER_INFO_INDEX;
 var CATTACK_OFFSET=0x00FCDCA4;
 var CCOLLISION_OFFSET=0x0107c436; //ccollisionresult
