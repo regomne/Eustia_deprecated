@@ -291,13 +291,13 @@ function myTcpSend(regs)
 	if(sendMsgFilter(pkId,realBuff))
 	{
 		print('Send id:',pkId,CmdName[pkId],buffSize);
-		if(pkId==0x13)
-		{
-			printMem(realBuff,buffSize);
-		}
+		// if(pkId==0x13)
+		// {
+		// 	printMem(realBuff,buffSize);
+		// }
 	}
 }
-function hookTcpSend(){Hooker.checkInfo(TCP_SENDBUFF_FUNC,function(regs){myTcpSend(regs)})}
+function hookTcpSend(){Hooker.checkInfo(0x1dc7388,function(regs){myTcpSend(regs)})}
 
 function myTcpRecv(regs)
 {
@@ -671,3 +671,37 @@ function getEffectMap(regs)
     });
   }
 }
+
+function vehHandler(pexp)
+{
+    var precord=u32(pexp);
+    var expType=u32(precord);
+    var pcontext=u32(pexp+4);
+    if(expType==0x40010006)
+        return 0;
+    print('exp occured: ',expType);
+    //win32.dbgOut('test\0');
+    return 0;
+}
+function trueVehHandler(pexp)
+{
+    return vehHandler(pexp);
+}
+function setVeh()
+{
+    var adveh=makeStdcallFunction(getAPIAddress('AddVectoredExceptionHandler'));
+    rmveh=makeStdcallFunction(getAPIAddress('RemoveVectoredExceptionHandler'));
+    return adveh(1,Callback.newFunc(trueVehHandler,1,'stdcall'));
+}
+
+function expDisp(regs)
+{
+//    printMem(regs.esp,0x10);
+    var precord=u32(regs.esp);
+    var expType=u32(precord);
+    var pcontext=u32(regs.esp+4);
+    if(expType==0x40010006)
+        return 0;
+    print('exp occured: ',expType);
+}
+function hookExp(){return Hooker.checkInfo(getAPIAddress('KiUserExceptionDispatcher'),function(regs){return expDisp(regs)})}

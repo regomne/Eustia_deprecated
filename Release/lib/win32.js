@@ -37,10 +37,14 @@ var Win32={
 		'kernel32.GetProcessHeap',
 		'kernel32.VirtualProtect',
 		'kernel32.LoadLibraryA',
+    'kernel32.GetModuleHandleA',
+    'kernel32.GetProcAddress',
 		'kernel32.OpenProcess',
 		'winmm.timeGetTime',
 		'kernel32.OutputDebugStringA',
 		'kernel32.OutputDebugStringW',
+		'user32.MessageBoxA',
+		'user32.MessageBoxW',
 	],
 	
 	init:function()
@@ -105,6 +109,7 @@ Win32.struct=function(defs,addr)
 		var rfunc=null;
 		var wfunc=null;
 		var daddr=addr+def.offset;
+
 		switch(def.type)
 		{
 		case 'I':
@@ -112,27 +117,68 @@ Win32.struct=function(defs,addr)
 			wfunc=wu32;
 			break;
 		case 'H':
-			func=u16;
+			rfunc=u16;
 			wfunc=wu16;
 			break;
 		case 'B':
-			func=u8;
+			rfunc=u8;
 			wfunc=wu8;
 			break;
-		}
-		Object.defineProperty(this,name,{
-			get:function()
+		default:
+			var subdefs=Win32[def.type];
+			if(subdefs!=undefined)
 			{
-				return rfunc(daddr);
-			},
-			set:function(val)
-			{
-				wfunc(daddr,val);
+
+				rfunc=function(addr){return new Win32.struct(subdefs,addr)};
+				//wfunc
 			}
-		});
+			else
+			{
+				throw new Error('unk type: '+def.type);
+			}
+		}
+		// Object.defineProperty(this,name,{
+		// 	get:function()
+		// 	{
+		// 		return rfunc(daddr);
+		// 	},
+		// 	set:function(val)
+		// 	{
+		// 		wfunc(daddr,val);
+		// 	}
+		// });
+		this[name]=rfunc(daddr);
 	}
 }
 
+Win32.EXCEPTION_RECORD ={
+	ExceptionCode:{type:'I',offset:0},
+	ExceptionFlags:{type:'I',offset:4},
+	ExceptionRecord:{type:'I',offset:8},
+	ExceptionAddress:{type:'I',offset:0xc},
+	NumberParameters:{type:'I',offset:0x10},
+};
 
+Win32.CONTEXT={
+	ContextFlags:{type:'I',offset:0},
+	Dr0:{type:'I',offset:4},
+	Dr1:{type:'I',offset:8},
+	Dr2:{type:'I',offset:12},
+	Dr3:{type:'I',offset:16},
+	Dr6:{type:'I',offset:20},
+	Dr7:{type:'I',offset:24},
+	//...
+	Edi:{type:'I',offset:156},
+	Esi:{type:'I',offset:160},
+	Ebx:{type:'I',offset:164},
+	Edx:{type:'I',offset:168},
+	Ecx:{type:'I',offset:172},
+	Eax:{type:'I',offset:176},
+	Ebp:{type:'I',offset:180},
+	Eip:{type:'I',offset:184},
+	SegCs:{type:'I',offset:188},
+	EFlags:{type:'I',offset:192},
+	Esp:{type:'I',offset:196},
+};
 
 module.exports=Win32;

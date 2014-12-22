@@ -289,7 +289,7 @@ static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     String::Value str(args[0]);
     auto pstr = (wchar_t *)*str;
-    auto p = wcschr(pstr, L'.');
+    auto p = wcsrchr(pstr, L'.');
     PVOID addr = 0;
     if (!p)
     {

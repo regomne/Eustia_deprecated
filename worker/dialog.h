@@ -73,10 +73,7 @@ public:
             if (state_&Console)
                 PostThreadMessage(g_UIThreadId, UIPROC_ADD_STRING, 0, (LPARAM)buff);
             if (state_&DbgView)
-            {
-                if (wcscmp(info.get(), L"\r\n") && wcscmp(info.get(),L"\n"))
-                    OutputDebugStringW(info.get());
-            }
+                PostThreadMessage(g_UIThreadId, UIPROC_ADD_STRING, 1, (LPARAM)buff);
         }
     }
     static void OutputInfo(const wchar_t *format, ...)

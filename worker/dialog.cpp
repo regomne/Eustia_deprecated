@@ -126,6 +126,11 @@ DWORD WINAPI UIProc(LPARAM param)
                 SendMessage(g_hOutputEdit, EM_REPLACESEL, 0, msg.lParam);
                 delete[](wchar_t*)msg.lParam;
             }
+            else if (msg.wParam == 1)
+            {
+                OutputDebugStringW((wchar_t*)msg.lParam);
+                delete[](wchar_t*)msg.lParam;
+            }
         }
         else if (msg.message == UIPROC_EXIT)
         {
