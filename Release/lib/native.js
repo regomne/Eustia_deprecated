@@ -81,6 +81,7 @@ var exp={};
 /// @param funcId 函数id，用以在回调时区分，每个回调须不同
 /// @param argCnt 参数个数
 /// @param callType 调用类型
+/// @return 返回创建的函数指针
 /// @function newCallback(funcId,argCnt,callType)
 
 /// 使用C++操作符delete char*清除内存。
@@ -119,6 +120,13 @@ var exp={};
 /// @param p 无符号长整数指针
 /// @return 转换后的double
 /// @function toDoublep(p)
+
+/// 创建一个带NamedAccessor的函数。
+/// 可对返回的函数使用var obj=new Func()来获得一个使用该访问器的对象。
+/// @brief 创建一个带NamedAccessor的函数
+/// @param getter 访问器
+/// @return 返回函数
+/// @function newFunctionWithNamedAccessor(getter)
 
 /// @cond
 exp.callFunction=function(addr,callType,regs) //其他参数附在后面
@@ -289,6 +297,11 @@ exp.toFloatp=function(p)
 exp.toDoublep=function(p)
 {
 	return _ToDoublep(p);
+}
+
+exp.newFunctionWithNamedAccessor=function(getter)
+{
+	return _NewFunctionWithNamedAccessor(getter);
 }
 
 module.exports=exp;

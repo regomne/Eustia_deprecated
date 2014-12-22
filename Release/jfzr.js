@@ -6,6 +6,7 @@ require('mystring')(global);
 var asm=require('asm');
 var Hooker=asm.Hooker;
 var win32=require('win32');
+var plugin=require('plugin');
 cloneObject(require('memory'),global);
 
 GetScriptInstanceAddr=0x00467970;
@@ -26,17 +27,8 @@ function hookSkill(){return Hooker.checkInfo(0x005DE420,function(regs){return my
 
 
 var scriptInstance=null;
-var lua51=lua51 || (function(){
-    var o={};
-    var mod=win32.GetModuleHandleA('lua5.1.dll');
-    o.luaL_loadstring=makeCdeclFunction(win32.GetProcAddress(mod,'luaL_loadstring'));
-    o.lua_pcall=makeCdeclFunction(win32.GetProcAddress(mod,'lua_pcall'));
-    o.lua_gettop=makeCdeclFunction(win32.GetProcAddress(mod,'lua_gettop'));
-    o.lua_pushstring=makeCdeclFunction(win32.GetProcAddress(mod,'lua_pushstring'));
-    o.lua_tostring=makeCdeclFunction(win32.GetProcAddress(mod,'lua_tostring'));
-    o.lua_pop=makeCdeclFunction(win32.GetProcAddress(mod,'lua_pop'));
-    return o;
-})();
+var lua51=plugin.getPlugin('lua5.1.dll','cdecl');
+
 function luaDo(cmd)
 {
   if(!scriptInstance)
@@ -58,7 +50,7 @@ function luaDo(cmd)
   var top=lua51.lua_gettop(scriptInstance);
   if(top>0)
   {
-    return astr(lua51.lua_tostring(scriptInstance,-1));
+    return astr(lua51.lua_tolstring(scriptInstance,-1,0));
   }
   else
   {

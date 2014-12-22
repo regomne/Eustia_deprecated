@@ -120,7 +120,7 @@ Module._load = function(request, parent, forceReload) {
   try {
     module.load(filename);
   } catch(e) {
-    if(oldModule)
+    if(cachedModule)
       Module._cache[cacheKey]=cachedModule;
     else
       delete Module._cache[cacheKey];

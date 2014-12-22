@@ -21,9 +21,9 @@
 using namespace v8;
 using namespace std;
 
-Persistent<ObjectTemplate, CopyablePersistentTraits<ObjectTemplate>> g_globalTemplate;
+//Persistent<ObjectTemplate, CopyablePersistentTraits<ObjectTemplate>> g_globalTemplate;
 
-#define THROW_EXCEPTION(str) isolate->ThrowException(String::NewFromTwoByte(isolate, (uint16_t*)str))
+#define THROW_EXCEPTION(str) isolate->ThrowException(Exception::Error(String::NewFromTwoByte(isolate, (uint16_t*)str)))
 
 #define CHECK_ARGS_COUNT(cnt) \
 if (args.Length()!=cnt)\
@@ -750,6 +750,61 @@ static void OutputStateSetter(Local<String> prop, Local<Value> value, const Prop
     OutputWriter::ChangeOutputStream((OutputWriter::DispState)st);
 }
 
+static void NamePropertyGetter(Local<String> prop, const PropertyCallbackInfo<Value>& info)
+{
+    auto isolate = info.GetIsolate();
+    HandleScope scope(isolate);
+
+    String::Utf8Value propStr(prop);
+    if (!strcmp(*propStr, "__this__"))
+    {
+        info.GetReturnValue().Set(info.This()->GetInternalField(0));
+        return;
+    }
+
+    auto func = info.Data().As<Function>();
+    auto fakeObj = info.This()->GetInternalField(0);
+    Handle<Value> args[] = { prop };
+    auto ret = func->Call(fakeObj, 1, args);
+    info.GetReturnValue().Set(ret);
+
+}
+
+static void NamedFunctionConstructor(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    auto fakeObj = Object::New(isolate);
+    args.This()->SetInternalField(0, fakeObj);
+}
+
+static void NewFunctionWithNamedAccessor(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_MINCOUNT(1);
+
+    if (!args[0]->IsFunction())
+    {
+        THROW_EXCEPTION(L"arg 1 must be a function!");
+        return;
+    }
+
+    auto funcTemp = FunctionTemplate::New(isolate, NamedFunctionConstructor);
+    auto objTemp = funcTemp->InstanceTemplate();
+
+    objTemp->SetNamedPropertyHandler(
+        NamePropertyGetter,
+        (NamedPropertySetterCallback)0,
+        (NamedPropertyQueryCallback)0,
+        (NamedPropertyDeleterCallback)0,
+        (NamedPropertyEnumeratorCallback)0,
+        args[0]);
+    objTemp->SetInternalFieldCount(1);
+
+    auto func = funcTemp->GetFunction();
+    args.GetReturnValue().Set(func);
+}
+
+
 Handle<Context> InitV8()
 {
     Isolate* isolate = Isolate::GetCurrent();
@@ -763,6 +818,7 @@ Handle<Context> InitV8()
         FunctionCallback callBack;
     } funcList[] = {
         //{ "_SetProperty", SetProperty },
+        { "_NewFunctionWithNamedAccessor", NewFunctionWithNamedAccessor },
 
         { "_Print", Print },
         { "_LoadJS", LoadJS },

@@ -38,6 +38,7 @@ var Win32={
 		'kernel32.VirtualProtect',
 		'kernel32.LoadLibraryA',
     'kernel32.GetModuleHandleA',
+    'kernel32.GetModuleHandleW',
     'kernel32.GetProcAddress',
 		'kernel32.OpenProcess',
 		'winmm.timeGetTime',
