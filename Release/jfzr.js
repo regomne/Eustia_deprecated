@@ -45,15 +45,30 @@ function luaDo(cmd)
   ret=lua51.lua_pcall(scriptInstance,0,-1,0);
   if(ret)
   {
-    print('erre:',ret);
+    print('erre:',astr(lua51.lua_tolstring(scriptInstance,-1,0)));
+    return;
   }
   var top=lua51.lua_gettop(scriptInstance);
   if(top>0)
   {
-    return astr(lua51.lua_tolstring(scriptInstance,-1,0));
+    var s=astr(lua51.lua_tolstring(scriptInstance,-1,0));
+    lua51.lua_settop(scriptInstance,-2);
+    return s;
   }
-  else
-  {
-    print('top is 0!');
-  }
+
+}
+
+function luaDoFile(name)
+{
+  var str=readText(name);
+  return luaDo(str);
+}
+
+function openConsole()
+{
+  var k32=plugin.getPlugin('kernel32.dll','stdcall');
+  var msvc=plugin.getPlugin('msvcr100.dll','cdecl');
+  k32.AllocConsole();
+  var stdout=msvc.__iob_func()+0x20;
+  msvc.freopen('CONOUT$','w',stdout);
 }

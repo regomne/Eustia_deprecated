@@ -30,6 +30,20 @@ require('mystring')(global);
 /// @param ... 根据格式化字符串需要的其他参数
 /// @function Win32.dbgOut(fmt)
 
+/// 根据结构定义解析一个结构地址指针。结构定义形如：\n
+/// {\n
+/// ExceptionCode:{type:'I',offset:0},\n
+/// ExceptionFlags:{type:'I',offset:4},\n
+/// ExceptionRecord:{type:'I',offset:8},\n
+/// ExceptionAddress:{type:'I',offset:0xc},\n
+/// NumberParameters:{type:'I',offset:0x10},\n
+/// };
+/// @brief 根据结构定义解析一个结构地址指针
+/// @param defs 结构定义
+/// @param addr 待解析的结构地址
+/// @return 返回结构对象指针，可以直接以属性名引用其中的字段
+/// @function Win32.struct(defs,addr)
+
 var Win32={
 	_apis:[
 		'kernel32.HeapAlloc',

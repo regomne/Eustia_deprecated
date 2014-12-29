@@ -278,7 +278,7 @@ function myTcpSend(regs)
 	function sendMsgFilter(pid,buff)
 	{
 		var exList=[0];
-		if(pid<0x372 && exList.indexOf(pid)==-1) return true;
+		if(pid<0x39f && exList.indexOf(pid)==-1) return true;
 		return false;
 	}
 
@@ -291,19 +291,19 @@ function myTcpSend(regs)
 	if(sendMsgFilter(pkId,realBuff))
 	{
 		print('Send id:',pkId,CmdName[pkId],buffSize);
-		// if(pkId==0x13)
-		// {
-		// 	printMem(realBuff,buffSize);
-		// }
+		if(pkId==188 || pkId==183)
+		{
+			printMem(realBuff,buffSize);
+		}
 	}
 }
-function hookTcpSend(){Hooker.checkInfo(0x1dc7388,function(regs){myTcpSend(regs)})}
+function hookTcpSend(){Hooker.checkInfo(0x01dc9288,function(regs){myTcpSend(regs)})}
 
 function myTcpRecv(regs)
 {
 	function recvMsgFilter(pid,buff)
 	{
-		var exList=[2,3,6,0x76];
+		var exList=[];
 		if(pid<0x375 && exList.indexOf(pid)==-1) return true;
 		return false;
 	}
@@ -321,7 +321,34 @@ function myTcpRecv(regs)
 	}
 }
 
-function hookTcpRecv(){Hooker.checkInfo(0xE5e980,function(regs){myTcpRecv(regs)})}
+function hookTcpRecv(){Hooker.checkInfo(0x00f42df0,function(regs){myTcpRecv(regs)})}
+
+function myTcpRecv2(regs)
+{
+  var buff=u32(TCP_USERINFO_BUFF_OFFSET);
+  var pkId=u32(regs.esp);
+  var buffSize=u32(TCP_BUFF_LEN);
+  print('Recv2 id:',pkId,CmdName[pkId],buffSize);
+  if(pkId==188)
+  {
+    buff++;
+    var cnt=u8(buff++);
+    for(var i=0;i<cnt;i++)
+    {
+      var auctionId=u32(buff);
+      var currPrice=u32(buff+8);
+      var finalPrice=u32(buff+0xc);
+      var leftTime=u8(buff+0x1d);
+      var itemId=u32(buff+0x1f);
+      var count=u32(buff+0x24);
+      print('item'+i,auctionId,currPrice.toString(),
+        finalPrice.toString(),leftTime.toString(),itemId,count);
+      buff+=0x93;
+    }
+  }
+}
+//DBG_NetworkProc in config.txt
+function hookTcpRecv2(){Hooker.checkInfo(0x00F42D6C,function(regs){return myTcpRecv2(regs)})}
 
 function CheckVectorAdd(regs)
 {
@@ -705,3 +732,37 @@ function expDisp(regs)
     print('exp occured: ',expType);
 }
 function hookExp(){return Hooker.checkInfo(getAPIAddress('KiUserExceptionDispatcher'),function(regs){return expDisp(regs)})}
+
+var createMonsterFunc=makeThiscallFunction(0x01142740);
+function createMonster(id,level,team)
+{
+  var sbuff=[
+    0x68, 0xEA, 0x00, 0x00, // id
+    0x00, 0x00, 0x00, 0x00,
+    0x70, 0x00, 0x00, 0x00, //level
+    0x75, 0x03, 0x00, 0x00, // x
+    0x1D, 0x01, 0x00, 0x00, // y
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x01, 0x00, 0x00, 0x00, // 1
+    0x00, 0x00, 0x00, 0x00, //0
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x00, 0x00, 0x00, 0x00, // 0
+    0xFF, 0xFF, 0x00, 0x00, // ffff
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x00, 0x00, 0x00, 0x00, // 0
+    0x00, 0x00, 0x00, 0x00, // 0
+  ];
+  sbuff=sbuff.map(function(e1){return String.fromCharCode(e1)}).join('');
+  var buff=win32.newMem(sbuff.length);
+  mwrite(buff,sbuff);
+  wu32(buff,id);
+  wu32(buff+8,level);
+  createMonsterFunc(u32(PLAYER_INFO_INDEX),buff);
+  win32.deleteMem(buff);
+}

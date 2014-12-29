@@ -62,19 +62,19 @@ static vector<int> ConvertIntArray(Handle<Array> jsVal)
 
 
 
-static void SetProperty(const v8::FunctionCallbackInfo<v8::Value>& args)
-{
-    auto isolate = args.GetIsolate();
-    CHECK_ARGS_COUNT(4);
-    if (!(args[0]->IsObject() || args[0]->IsFunction()))
-    {
-        THROW_EXCEPTION(L"arg 1 must be an object!");
-        return;
-    }
-
-    auto obj = args[0].As<Object>();
-    obj->ForceSet(args[1], args[2], (PropertyAttribute)args[3]->Uint32Value());
-}
+// static void SetProperty(const v8::FunctionCallbackInfo<v8::Value>& args)
+// {
+//     auto isolate = args.GetIsolate();
+//     CHECK_ARGS_COUNT(4);
+//     if (!(args[0]->IsObject() || args[0]->IsFunction()))
+//     {
+//         THROW_EXCEPTION(L"arg 1 must be an object!");
+//         return;
+//     }
+// 
+//     auto obj = args[0].As<Object>();
+//     obj->ForceSet(args[1], args[2], (PropertyAttribute)args[3]->Uint32Value());
+// }
 
 static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
 {

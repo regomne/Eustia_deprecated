@@ -45,7 +45,7 @@ function getPlugin(dllname,callType)
 
     var addr=win32.GetProcAddress(mod,prop);
     if(addr==0)
-      throw new Error("Can't find the export function!");
+      throw new Error("Can't find the export function: "+prop);
 
     var val=addr;
     if(callType=='stdcall')
