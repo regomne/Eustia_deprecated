@@ -183,7 +183,7 @@ exp.mread=function (addr,size)
 	}
 	catch(e)
 	{
-		throw new Error(e);
+		throw e;
 	}
 }
 
