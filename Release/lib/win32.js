@@ -51,6 +51,7 @@ var Win32={
 		'kernel32.GetProcessHeap',
 		'kernel32.VirtualProtect',
 		'kernel32.LoadLibraryA',
+		'kernel32.LoadLibraryW',
     'kernel32.GetModuleHandleA',
     'kernel32.GetModuleHandleW',
     'kernel32.GetProcAddress',

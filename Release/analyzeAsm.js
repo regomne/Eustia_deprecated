@@ -1,6 +1,7 @@
 ﻿var readMapFile=require('mapfile').readMapFile;
 load('dnf_def.js');
 requireAll('quickfunc',global);
+requireAll('asm',global);
 
 var Analyzer={
     init:function(startAddr,region,newBranch)
@@ -185,7 +186,10 @@ var Analyzer={
                 else
                 {
                     if(distr.indexOf(switchReg)!=-1)
-                        throw 'unk inst with eax! '+distr;
+                    {
+                        //throw 'unk inst with eax! '+distr;
+                        print("unk inst with eax at:",curAddr,distr);
+                    }
                     state='over';
                 }
             }
@@ -676,9 +680,9 @@ var Analyzer={
     },
 };
 
-var findKey=makeThisCallFunction(0x45d100);
-var getMapEnd=makeThisCallFunction(0x1db9880);
-var isItorEqual=makeThisCallFunction(0x10f47c0);
+var findKey=makeThiscallFunction(0x45d100);
+var getMapEnd=makeThiscallFunction(0x1db9880);
+var isItorEqual=makeThiscallFunction(0x10f47c0);
 var Keymap=0x2d73518;
 
 function findScriptKey(key)
@@ -941,12 +945,12 @@ function GetScriptData(scr,types)
 }
 
 
-Analyzer.init(0,[[0x01F6BAF0,0x01F78EAA]],0);
 
 function beginAna()
 {
-	sw=Analyzer.getSwitch(0x01F6C757);
-	keymap=getKeysToAddressMap(0x2DE0440,sw);
+    Analyzer.init(0,[[0x0203EE50,0x0204E31D]],0);
+	sw=Analyzer.getSwitch(0x0203f106);
+	keymap=getKeysToAddressMap(0x3Ff4218,sw);
 	//cs=Analyzer.getAllCallsFromBranch([[0x1ef43a9,0x1ef43ac]],keymap)
 	rel=Analyzer.getAllOffsetsRelation(keymap,[[0x01F72E39,0x01F72E3c]]);
 	dnfmap=readMapFile('d:\\dnfFiles\\10.0.91.0\\dnf.map')
@@ -1104,4 +1108,33 @@ function enumCmpEquip()
 
     }
     print('over');
+}
+
+var changeFunc=makeThiscallFunction(0x100d010); //_efd00715b5663dc81f50f951247cfab
+function changeDress(src,dest)
+{
+    var dressPage=u32(0x2c9233c); //_30c8e1a37f68772ddb56b0b1965a8f6
+    changeFunc(dressPage,src,dest,1,6,0);
+}
+function changePet(src,dest)
+{
+    var petPage=u32(0x2c92340); //_161cfc2c509c037c859a6f70201998a
+    changeFunc(petPage,src,dest,1,6,0);
+}
+
+function mysay(msg,type)
+{
+    var th=u32(0x02C92324); //d1d18e482057954392000f21b514515e
+    var getTh=makeCdeclFunction(0x012C0A70); //_71897d16ea1afda836eedfbd27f681e
+    th=getTh(th);
+    th=u32(th+0x124); //12c4083
+
+    var msgBuffer=u32(th+0x14); //12c22fd
+    msgBuffer=u32(msgBuffer+0x390+8); //1ea693f 1f14e80
+
+    mwrite(msgBuffer,msg);
+
+    var saySth=makeThiscallFunction(0x12c21c0); //_4c1463cb60fea44322876b116a45035
+
+    return saySth(th);
 }

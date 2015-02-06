@@ -47,7 +47,7 @@ function not(f)
 {
   return function()
   {
-    var result=f.apply(this.arguments);
+    var result=f.apply(this,arguments);
     return !result;
   };
 }
@@ -120,7 +120,7 @@ exp.array=array;
 /// @brief 返回一个不完全函数，将参数绑定的原始函数的左侧
 /// @param f 原始函数
 /// @return 返回绑定参数的新函数
-function partialLeft(f)
+function bindL(f)
 {
   var args=arguments;
   return function()
@@ -130,13 +130,13 @@ function partialLeft(f)
     return f.apply(this,a);
   };
 }
-exp.partialLeft=partialLeft;
+exp.bindL=bindL;
 
 /// 返回一个不完全函数，将参数绑定的原始函数的右侧
 /// @brief 返回一个不完全函数，将参数绑定的原始函数的右侧
 /// @param f 原始函数
 /// @return 返回绑定参数的新函数
-function partialRight(f)
+function bindR(f)
 {
   var args=arguments;
   return function()
@@ -146,13 +146,13 @@ function partialRight(f)
     return f.apply(this,a);
   };
 }
-exp.partialRight=partialRight;
+exp.bindR=bindR;
 
 /// 返回一个不完全函数，将undefined参数进行模板替换，并将剩余参数绑定到右侧
 /// @brief 生成函数模板，将其中的undefined代替
 /// @param f 原始函数
 /// @return 返回绑定参数的新函数
-function partial(f)
+function bind(f)
 {
   var args=arguments;
   return function()
@@ -168,7 +168,7 @@ function partial(f)
     return f.apply(this,a);
   }
 }
-exp.partial=partial;
+exp.bind=bind;
 
 /// 返回一个带有记忆功能的函数，针对同样的参数(值类型）直接返回相同的结果。\n
 /// 主要用在复杂递归场景中，生成的函数有较高的空间复杂度。
@@ -183,7 +183,7 @@ function memorize(f)
     if(key in cache)
       return cache[key];
     else
-      return cache[key]=f.apply(this.arguments);
+      return cache[key]=f.apply(this,arguments);
   };
 }
 exp.memorize=memorize;

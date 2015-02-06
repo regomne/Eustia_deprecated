@@ -34,9 +34,9 @@ function getPlugin(dllname,callType)
   }
   if(!mod)
   {
-    mod=win32.LoadLibraryW((dllname+'\0').encode());
+    mod=win32.LoadLibraryW((fname+'\0').encode());
     if(mod==0)
-      throw new Error("Can't load dll: "+dllname);
+      throw new Error("Can't load dll: "+fname);
   }
 
   var func=native.newFunctionWithNamedAccessor(function(prop){
