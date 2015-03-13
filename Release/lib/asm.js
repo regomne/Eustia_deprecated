@@ -6,6 +6,7 @@ var native=require('native');
 var Convert=require('utils').Convert;
 var win32=require('win32');
 requireAll('quickfunc',global);
+requireAll('func',global);
 require('mystring')(global);
 /// @endcond
 
