@@ -30,7 +30,11 @@ function getPlugin(dllname,callType)
   {
     mod=win32.GetModuleHandleW((dllname+'\0').encode());
     if(!mod)
-      throw new Error("Can't find the dll: "+dllname);
+    {
+      mod=win32.LoadLibraryW((dllname+'\0').encode());
+      if(!mod)
+        throw new Error("Can't find the dll: "+dllname);
+    }
   }
   if(!mod)
   {
