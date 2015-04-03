@@ -3,8 +3,7 @@
 
 /// @cond
 var native=require('native');
-var Convert=require('utils').Convert;
-var win32=require('win32');
+var utils=require('utils');
 requireAll('quickfunc',global);
 requireAll('func',global);
 require('mystring')(global);
@@ -198,7 +197,7 @@ var Hooker=(function(){
 	function parseRegs(regStrtPtr)
 	{
 		regStrt=native.mread(regStrtPtr,4*9);
-		arr=Convert.unpack(regStrt,'IIIIIIIII');
+		arr=utils.Convert.unpack(regStrt,'IIIIIIIII');
 		return {
 			eflags:arr[0],
 			edi:arr[1],
@@ -213,7 +212,7 @@ var Hooker=(function(){
 	}
 	function reparseRegs(regsObj)
 	{
-		return Convert.pack('IIIIIIIII',
+		return utils.Convert.pack('IIIIIIIII',
 			regsObj.eflags,
 			regsObj.edi,
 			regsObj.esi,
@@ -261,12 +260,12 @@ var Hooker=(function(){
 /// @param type 函数类型，可以为stdcall cdecl thiscall中的一个
 /// @return 生成的native函数
 /// @remark 生成的函数没有对重入的保护，如果发生递归调用，则会导致程序崩溃。
-/// @function Callback.newFunc(func,argCnt,type)
+/// @function Callback.newFunction(func,argCnt,type)
 
 /// 删除一个native JS函数
 /// @brief 删除一个native JS函数
 /// @param addr 函数地址
-/// @function Callback.deleteFunc(addr)
+/// @function Callback.deleteFunction(addr)
 
 var Callback={
 	_dispatchDict:{length:0},
@@ -278,17 +277,17 @@ var Callback={
 		else
 		{
 			var func=this._dispatchDict[id];
-			var args=Convert.unpack(native.mread(argsPtr,argCnt*4),'I'.repeat(argCnt));
+			var args=utils.Convert.unpack(native.mread(argsPtr,argCnt*4),'I'.repeat(argCnt));
 			return func.apply(this,args);
 		}
 	},
-	newFunc:function(func,argCnt,type)
+	newFunction:function(func,argCnt,type)
 	{
 		var newId=this._dispatchDict.length++;
 		this._dispatchDict[newId]=func;
 		return native.newCallback(newId,argCnt,type);
 	},
-	deleteFunc:function(addr)
+	deleteFunction:function(addr)
 	{
 		native.deleteMem(addr);
 		if(this._addrDict[addr]!=undefined)

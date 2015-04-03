@@ -49,8 +49,17 @@ struct MyDataStruct
 };
 
 
+struct IntervalThreadParam
+{
+    int interval;
+    bool(*func)();
+    bool needStop;
+};
+
 int InjectStartingProcess(HANDLE process, HANDLE thread, wchar_t* dllPath);
 int CreateAndInject(TCHAR* appName, TCHAR* dllName, Communication& comm);
 
 BOOL SuspendAllThreads(int processId, std::vector<int>& ignoreIdList, std::vector<int>& theadIdStack);
 BOOL ResumeAllThreads(std::vector<int>& threadIdStack);
+
+DWORD WINAPI IntervalThread(LPVOID lParam);

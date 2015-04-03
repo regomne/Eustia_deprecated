@@ -84,6 +84,11 @@ var exp={};
 /// @return 返回创建的函数指针
 /// @function newCallback(funcId,argCnt,callType)
 
+/// 使用C++操作符new char[]申请内存
+/// @brief 申请内存内存
+/// @param size 内存大小
+/// @function newMem(size)
+
 /// 使用C++操作符delete char*清除内存。
 /// @brief 释放内存
 /// @param addr 内存地址
@@ -127,6 +132,12 @@ var exp={};
 /// @param getter 访问器
 /// @return 返回函数
 /// @function newFunctionWithNamedAccessor(getter)
+
+/// 创建一个线程，该线程以指定间隔调用指定函数
+/// @brief 创建一个线程，该线程以指定间隔调用指定函数
+/// @param ptr 一个native结构，具体含义参见src
+/// @return 返回线程句柄
+/// @function createIntervalThread(ptr)
 
 /// @cond
 exp.callFunction=function(addr,callType,regs) //其他参数附在后面
@@ -254,6 +265,11 @@ exp.newCallback=function (funcId,argCnt,callType)
 	return _NewCallback(funcId,argCnt,rcallType);
 }
 
+exp.newMem=function(size)
+{
+	return _NewMem(size);
+}
+
 exp.deleteMem=function (addr)
 {
 	return _DeleteMem(addr);
@@ -302,6 +318,11 @@ exp.toDoublep=function(p)
 exp.newFunctionWithNamedAccessor=function(getter)
 {
 	return _NewFunctionWithNamedAccessor(getter);
+}
+
+exp.createIntervalThread=function(ptr)
+{
+	return _CreateIntervalThread(ptr);
 }
 
 module.exports=exp;

@@ -190,3 +190,15 @@ BOOL ResumeAllThreads(vector<int>& threadIdStack)
     }
     return TRUE;
 }
+
+//a thread routine which call the function every interval
+DWORD WINAPI IntervalThread(LPVOID lParam)
+{
+    auto param = (IntervalThreadParam*)lParam;
+    while (!param->needStop)
+    {
+        param->func();
+        Sleep(param->interval);
+    }
+    return 0;
+}

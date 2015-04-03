@@ -2,7 +2,7 @@
 /// @brief 快速函数模块
 
 /// @cond
-var Convert=require('utils').Convert;
+var utils=require('utils');
 var native=require('native');
 var mread=native.mread;
 var mwrite=native.mwrite;
@@ -49,11 +49,11 @@ hex:function(num)
 
 u32:function(addr)
 {
-	return Convert.toU32(mread(addr,4));
+	return utils.Convert.toU32(mread(addr,4));
 },
 u16:function(addr)
 {
-	return Convert.toU16(mread(addr,2));
+	return utils.Convert.toU16(mread(addr,2));
 },
 u8:function(addr)
 {
@@ -62,11 +62,11 @@ u8:function(addr)
 
 wu32:function(addr,i)
 {
-	mwrite(addr,Convert.fromU32(i));
+	mwrite(addr,utils.Convert.fromU32(i));
 },
 wu16:function(addr,i)
 {
-	mwrite(addr,Convert.fromU16(i));
+	mwrite(addr,utils.Convert.fromU16(i));
 },
 wu8:function(addr,i)
 {

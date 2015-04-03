@@ -110,6 +110,7 @@ var cmdparser=require('cmdparser');
 var utils=require('utils');
 var asm=require('asm');
 var memory=require('memory');
+var plugin=require('plugin');
 
 cloneObject(native,global);
 cloneObject(utils,global);

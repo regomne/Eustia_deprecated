@@ -459,6 +459,23 @@ static void NewCallback(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
 }
 
+static void NewMem(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
+    auto size = args[0]->Uint32Value();
+    void* mem = nullptr;
+    try
+    {
+        mem = new char[size];
+    }
+    catch (...)
+    { /// no mem	
+    }
+    args.GetReturnValue().Set((int)mem);
+}
+
 static void DeleteMem(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     auto isolate = args.GetIsolate();
@@ -804,6 +821,27 @@ static void NewFunctionWithNamedAccessor(const v8::FunctionCallbackInfo<v8::Valu
     args.GetReturnValue().Set(func);
 }
 
+static void CreateIntervalThread(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+    auto isolate = args.GetIsolate();
+    CHECK_ARGS_COUNT(1);
+
+    auto param = args[0]->Uint32Value();
+    if (!param)
+    {
+        THROW_EXCEPTION(L"arg 1 must be a pointer!");
+        return;
+    }
+
+    auto handle = CreateThread(0, 0, IntervalThread, (LPVOID)param, 0, 0);
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+        THROW_EXCEPTION(L"Can't create the thread!");
+        return;
+    }
+
+    args.GetReturnValue().Set((int)handle);
+}
 
 Handle<Context> InitV8()
 {
@@ -833,12 +871,14 @@ Handle<Context> InitV8()
         { "_DumpMemory", DumpMemory },
         { "_SuspendAllThreads", SuspendAllThreads },
         { "_ResumeAllThreads", ResumeAllThreads },
+        { "_CreateIntervalThread", CreateIntervalThread },
 
         { "_CheckInfoHook", CheckInfoHook },
         { "_Unhook", Unhook },
         { "_GetAPIAddress", GetAPIAddress },
         { "_CallFunction", CallFunction },
         { "_NewCallback", NewCallback },
+        { "_NewMem", NewMem },
         { "_DeleteMem", DeleteMem },
 
         { "_Disassemble", Disassmble },
