@@ -44,6 +44,14 @@ require('mystring')(global);
 /// @return 返回结构对象指针，可以直接以属性名引用其中的字段
 /// @function Win32.struct(defs,addr)
 
+/// 以指定间隔执行函数，在创建的新线程中执行，但是js代码不会并行执行，所以请不要把interval设置得太短。
+/// @brief 以指定间隔执行函数
+/// @param func 需要执行的函数
+/// @param intv 执行间隔
+/// @return 返回一个对象，其stop方法可以停止线程执行
+/// @remark 注意函数内部分配的12字节参数以及callback函数不会被释放
+/// @function Win32.setInterval(func,intv)
+
 var Win32={
 	_apis:[
 		'kernel32.HeapAlloc',
@@ -95,6 +103,26 @@ var Win32={
 };
 
 Win32.init();
+
+function setInterval(func,intv)
+{
+  var param=native.newMem(12);
+  if(param==0)
+    throw new Exception("no param mem");
+  wu32(param,intv);
+  var funcAddr=asm.Callback.newFunction(func,0,'cdecl');
+  wu32(param+4,funcAddr);
+  wu32(param+8,0);
+  var ht=native.createIntervalThread(param);
+
+  return {
+    stop:function()
+    {
+      wu32(param+8,1);
+    }
+  };
+}
+Win32.setInterval=setInterval;
 
 Win32.newMem=function(size)
 {
