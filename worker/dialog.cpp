@@ -18,6 +18,8 @@
 #include "patcher.h"
 #include "common.h"
 
+#include "..\gs\ToolFun.h"
+
 using namespace v8;
 using namespace std;
 
@@ -75,7 +77,11 @@ void ProcessEngineMsg(MSG* msg)
     {
         g_platform = platform::CreateDefaultPlatform(0);
         V8::InitializePlatform(g_platform);
-        g_mainIsolate = Isolate::New();
+        V8::Initialize();
+        Isolate::CreateParams create_params;
+        auto abAlloc = new MyArrayBufferAllocator(); //²»ÊÍ·Å
+        create_params.array_buffer_allocator = abAlloc;
+        g_mainIsolate = Isolate::New(create_params);
         g_mainIsolate->Enter();
         {
             HandleScope scope(g_mainIsolate);
@@ -102,9 +108,11 @@ void ProcessEngineMsg(MSG* msg)
     else if (msg->message == JSENGINE_EXIT)
     {
         HandleScope scope(g_mainIsolate);
+        
         g_mainIsolate->GetCurrentContext()->Exit();
         g_mainIsolate->Exit();
         g_mainIsolate->Dispose();
+        V8::Dispose();
         V8::ShutdownPlatform();
         delete g_platform;
         DeleteCriticalSection(&g_v8ThreadLock);
@@ -142,7 +150,8 @@ DWORD WINAPI UIProc(LPARAM param)
 
 DWORD WINAPI CommandProc(LPARAM param)
 {
-    auto isolate = Isolate::New();
+    Isolate::CreateParams create_params;
+    auto isolate = Isolate::New(create_params);
     isolate->Enter();
 
     HandleScope handle_scope(isolate);

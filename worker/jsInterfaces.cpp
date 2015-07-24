@@ -23,19 +23,22 @@ using namespace std;
 
 //Persistent<ObjectTemplate, CopyablePersistentTraits<ObjectTemplate>> g_globalTemplate;
 
-#define THROW_EXCEPTION(str) isolate->ThrowException(Exception::Error(String::NewFromTwoByte(isolate, (uint16_t*)str)))
+#define NEW_CONST_STRING8(str) String::NewFromUtf8(isolate, (str), NewStringType::kNormal).ToLocalChecked()
+#define NEW_CONST_STRINGU(str) String::NewFromTwoByte(isolate, (uint16_t*)(str), NewStringType::kNormal).ToLocalChecked()
+
+#define THROW_EXCEPTION(str) isolate->ThrowException(Exception::Error(NEW_CONST_STRINGU(str)))
 
 #define CHECK_ARGS_COUNT(cnt) \
 if (args.Length()!=cnt)\
 {\
-    isolate->ThrowException(String::NewFromTwoByte(isolate, (uint16_t*)(L"need " L###cnt L" arguments!")));\
+    THROW_EXCEPTION(L"need " L###cnt L" arguments!"); \
     return;\
 }
 
 #define CHECK_ARGS_MINCOUNT(cnt) \
 if (args.Length() < cnt)\
 {\
-    isolate->ThrowException(String::NewFromTwoByte(isolate, (uint16_t*)(L"need at least " L###cnt L" arguments!"))); \
+    THROW_EXCEPTION(L"need at least " L###cnt L" arguments!"); \
     return; \
 }
 
@@ -82,23 +85,24 @@ static void GetMemoryBlocks(const v8::FunctionCallbackInfo<v8::Value>& args)
     CHECK_ARGS_COUNT(1);
 
     HandleScope handleScope(isolate);
+    auto ctx = isolate->GetCurrentContext();
     auto array = Array::New(isolate, 100);
-    auto hp = (HANDLE)args[0]->Int32Value();
+    auto hp = (HANDLE)args[0]->Int32Value(ctx).FromMaybe(0);
     vector<MEMORY_BASIC_INFORMATION> blocks;
     if (!GetMemoryBlocks(hp, blocks))
     {
-        isolate->ThrowException(String::NewFromTwoByte(isolate, (uint16_t*)L"get mem failed"));
+        THROW_EXCEPTION(L"get mem failed");
         return;
     }
 
     for (DWORD i = 0; i < blocks.size(); i++)
     {
         auto obj = Object::New(isolate);
-        obj->Set(String::NewFromUtf8(isolate, "baseAddress"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].BaseAddress));
-        obj->Set(String::NewFromUtf8(isolate, "allocationBase"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].AllocationBase));
-        obj->Set(String::NewFromUtf8(isolate, "regionSize"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].RegionSize));
-        obj->Set(String::NewFromUtf8(isolate, "protect"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].Protect));
-        obj->Set(String::NewFromUtf8(isolate, "allocationProtect"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].AllocationProtect));
+        obj->Set(NEW_CONST_STRING8("baseAddress"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].BaseAddress));
+        obj->Set(NEW_CONST_STRING8("allocationBase"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].AllocationBase));
+        obj->Set(NEW_CONST_STRING8("regionSize"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].RegionSize));
+        obj->Set(NEW_CONST_STRING8("protect"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].Protect));
+        obj->Set(NEW_CONST_STRING8("allocationProtect"), Integer::NewFromUnsigned(isolate, (DWORD)blocks[i].AllocationProtect));
 
         array->Set(i, obj);
     }
@@ -111,9 +115,10 @@ static void DumpMemory(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(4);
 
-    HANDLE processHandle = (HANDLE)args[0]->Uint32Value();
-    LPVOID startAddr = (LPVOID)args[1]->Uint32Value();
-    DWORD size = args[2]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    HANDLE processHandle = (HANDLE)args[0]->Uint32Value(ctx).FromMaybe(0);
+    LPVOID startAddr = (LPVOID)args[1]->Uint32Value(ctx).FromMaybe(0);
+    DWORD size = args[2]->Uint32Value(ctx).FromMaybe(0);
     String::Value fileName(args[3]);
 
     auto ret=DumpMemory(processHandle, startAddr, size, (wchar_t*)*fileName);
@@ -127,7 +132,8 @@ static void SuspendAllThreads(const v8::FunctionCallbackInfo<v8::Value>& args)
 
     HandleScope scope(isolate);
 
-    auto processId = args[0]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    auto processId = args[0]->Uint32Value(ctx).FromMaybe(0);
     if (!args[1]->IsArray())
     {
         THROW_EXCEPTION(L"arg 2 must be an array!");
@@ -153,36 +159,57 @@ static void ResumeAllThreads(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(1);
 
-    auto suspendThreads = (vector<int>*)args[0]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    auto suspendThreads = (vector<int>*)args[0]->Uint32Value(ctx).FromMaybe(0);
+
+    if (suspendThreads == nullptr)
+    {
+        THROW_EXCEPTION(L"arg 0 must be a pointer!");
+        return;
+    }
 
     ResumeAllThreads(*suspendThreads);
 
     delete suspendThreads;
 }
 
-static bool ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& pointers)
+// 确保调用者拥有HandleScope
+static bool ConvertElement(Isolate* isolate, void* elem, MaybeLocal<Value> jsMbVal, vector<void*>& pointers)
 {
     auto rslt = true;
-    if (jsVal->IsBoolean() || jsVal->IsBooleanObject())
+    auto ctx = isolate->GetCurrentContext();
+
+    Local<Value> jsVal;
+    if (!jsMbVal.ToLocal(&jsVal))
     {
-        *(bool*)elem = jsVal->BooleanValue();
+        rslt = false;
     }
-    else if (jsVal->IsInt32() || jsVal->IsUint32() || jsVal->IsNumber() || jsVal->IsNumberObject())
+    else if (jsVal->IsBoolean() || jsVal->IsBooleanObject())
     {
-        *(DWORD*)elem = jsVal->Uint32Value();
+        *(bool*)elem = jsVal->BooleanValue(ctx).FromMaybe(false);
+    }
+    else if (jsVal->IsNumber() || jsVal->IsNumberObject())
+    {
+        *(DWORD*)elem = jsVal->Uint32Value(ctx).FromMaybe(0);
     }
     else if (jsVal->IsString() || jsVal->IsStringObject())
     {
-        auto ss = jsVal->ToString();
-        
-        //String::Utf8Value str(jsVal);
-        auto strBuff = new BYTE[ss->Length() + 1];
-        //memcpy(strBuff, *str, str.length());
-        //strBuff[str.length()] = 0;
-        auto wroteBytes=ss->WriteOneByte(strBuff);
-        //DBGOUTHEX((strBuff, wroteBytes));
-        pointers.push_back(strBuff);
-        *(BYTE**)elem = strBuff;
+        Local<String> ss;
+        if (!jsVal->ToString(ctx).ToLocal(&ss))
+        {
+            rslt = false;
+        }
+        else
+        {
+            //String::Utf8Value str(jsVal);
+            auto strBuff = new BYTE[ss->Length() + 1];
+            //memcpy(strBuff, *str, str.length());
+            //strBuff[str.length()] = 0;
+            auto wroteBytes = ss->WriteOneByte(strBuff);
+            //DBGOUTHEX((strBuff, wroteBytes));
+            pointers.push_back(strBuff);
+            *(BYTE**)elem = strBuff;
+        }
     }
     else if (jsVal->IsArray())
     {
@@ -192,7 +219,7 @@ static bool ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& point
         for (DWORD i = 0; i < jsArr->Length(); i++)
         {
             arrBuff[i] = 0;
-            auto cvtRslt = ConvertElement(&arrBuff[i], jsArr->Get(i), pointers);
+            auto cvtRslt = ConvertElement(isolate, &arrBuff[i], jsArr->Get(ctx, i), pointers);
             if (!cvtRslt)
                 rslt = false;
         }
@@ -208,17 +235,12 @@ static bool ConvertElement(void* elem, Handle<Value> jsVal, vector<void*>& point
 static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
     auto isolate = args.GetIsolate();
+    CHECK_ARGS_MINCOUNT(2);
     HandleScope handleScope(isolate);
 
-    if (args.Length() < 2)
-    {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "At least 2 parameters"));
-        return;
-    }
-
-    auto funcAddr = args[0]->Uint32Value();
-    auto callType = (FunctionCallType)args[1]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    auto funcAddr = args[0]->Uint32Value(ctx).FromMaybe(0);
+    auto callType = (FunctionCallType)args[1]->Uint32Value(ctx).FromMaybe(0);
     Registers regs;
     DWORD regFlags = 0;
     vector<DWORD> arguments;
@@ -228,17 +250,16 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
     {
         if (!args[2]->IsObject())
         {
-            args.GetIsolate()->ThrowException(
-                v8::String::NewFromUtf8(args.GetIsolate(), "arg3 must be a object"));
+            THROW_EXCEPTION(L"arg3 must be a object");
             return;
         }
         auto regsObj = args[2].As<Object>();
         for (int i = 0; i < 8; i++)
         {
-            if (regsObj->Has(i))
+            if (regsObj->Has(ctx, i).FromMaybe(false))
             {
                 regFlags |= (1 << i);
-                *((DWORD*)&regs + (i + 1)) = regsObj->Get(i)->Uint32Value();
+                *((DWORD*)&regs + (i + 1)) = regsObj->Get(ctx, i).ToLocalChecked()->Uint32Value(ctx).FromMaybe(0);
             }
         }
     }
@@ -246,15 +267,14 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
     {
         if (!args[3]->IsArray())
         {
-            args.GetIsolate()->ThrowException(
-                v8::String::NewFromUtf8(args.GetIsolate(), "arg4 must be an array"));
+            THROW_EXCEPTION(L"arg4 must be an array");
             return;
         }
         auto argsArray = args[3].As<Array>();
         for (DWORD i = 0; i < argsArray->Length(); i++)
         {
             DWORD arg = 0;
-            auto cvtRslt = ConvertElement(&arg, argsArray->Get(i), pointers);
+            auto cvtRslt = ConvertElement(isolate, &arg, argsArray->Get(i), pointers);
             if (!cvtRslt)
             {
                 DBGOUT(("arg %d cvt failed.", i));
@@ -270,8 +290,7 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
     if (!callRslt)
     {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "exception occured."));
+        THROW_EXCEPTION(L"exception occured.");
     }
     else
     {
@@ -322,30 +341,37 @@ static void GetAPIAddress(const v8::FunctionCallbackInfo<v8::Value>& args)
         }
     }
 
-    args.GetReturnValue().Set(Integer::NewFromUnsigned(isolate, (uint32_t)addr));
+    args.GetReturnValue().Set((uint32_t)addr);
 }
 
 static void Mread(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
+    auto isolate = args.GetIsolate();
+
+    auto ctx = isolate->GetCurrentContext();
     if (args.Length() != 2 || !args[0]->IsUint32() || !args[1]->IsUint32())
     {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        THROW_EXCEPTION(L"Bad parameters");
         return;
     }
 
-    auto start = args[0]->Uint32Value();
-    auto len = args[1]->Uint32Value();
+    auto start = args[0]->Uint32Value(ctx).FromMaybe(0);
+    auto len = args[1]->Uint32Value(ctx).FromMaybe(0);
     Local<String> str;
     __try
     {
-        str = String::NewFromOneByte(args.GetIsolate(), (uint8_t*)start, String::kNormalString, len);
-        args.GetReturnValue().Set(str);
+        auto mbStr = String::NewFromOneByte(args.GetIsolate(), (uint8_t*)start, NewStringType::kNormal, len);
+        if (!mbStr.ToLocal(&str))
+        {
+            THROW_EXCEPTION(L"Can't create string with mem!");
+        }
+        else
+            args.GetReturnValue().Set(str);
     }
     __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
     {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Mem access violation!"));
+        DBGOUT(("Mread: err: start: 0x%x, len: 0x%x", start, len));
+        THROW_EXCEPTION(L"Mem access violation!");
     }
     return;
 }
@@ -355,15 +381,15 @@ static void Mwrite(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     if (args.Length() != 4 || !args[0]->IsUint32())
     {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        THROW_EXCEPTION(L"Bad parameters");
         return;
     }
 
-    auto addr = args[0]->Uint32Value();
-    auto str = args[1]->ToString();
-    auto start = args[2]->Uint32Value();
-    auto len = args[3]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    auto addr = args[0]->Uint32Value(ctx).FromMaybe(0);
+    auto str = args[1]->ToString(ctx).ToLocalChecked();
+    auto start = args[2]->Uint32Value(ctx).FromMaybe(0);
+    auto len = args[3]->Uint32Value(ctx).FromMaybe(0);
     if ((int)start > str->Length())
     {
         start = str->Length();
@@ -380,6 +406,7 @@ static void Mwrite(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
     __except (EXCEPTION_EXECUTE_HANDLER)
     {
+        DBGOUT(("Mwrite:err: start: 0x%x, len: 0x%x", start, len));
         THROW_EXCEPTION(L"Can't write memory");
     }
 }
@@ -669,7 +696,7 @@ void CloneObject(Isolate* isolate, Handle<Value> source, Handle<Value> target)
     // Init
     if (g_cloneObjectMethod.IsEmpty()) {
         Handle<Function> cloneObjectMethod_ = Handle<Function>::Cast(
-            Script::Compile(String::NewFromUtf8(isolate,
+            Script::Compile(NEW_CONST_STRING8(
             "(function(source, target) {\n\
             Object.getOwnPropertyNames(source).forEach(function(key) {\n\
             try {\n\
@@ -915,25 +942,26 @@ void ReportException(v8::Isolate* isolate, v8::TryCatch* try_catch) {
     }
     else {
         // Print (filename):(line number): (message).
-        v8::String::Value filename(message->GetScriptResourceName());
+        v8::String::Value filename(message->GetScriptOrigin().ResourceName());
         auto filename_string = ToWString(filename);
-        int linenum = message->GetLineNumber();
+        v8::Local<v8::Context> context(isolate->GetCurrentContext());
+        int linenum = message->GetLineNumber(context).FromJust();
         OutputWriter::OutputInfo(L"%s:%i: %s\n", filename_string, linenum, exception_string);
         // Print line of source code.
-        v8::String::Value sourceline(message->GetSourceLine());
+        v8::String::Value sourceline(message->GetSourceLine(context).ToLocalChecked());
         auto sourceline_string = ToWString(sourceline);
         OutputWriter::OutputInfo(L"%s\n", sourceline_string);
         // Print wavy underline (GetUnderline is deprecated).
-        int start = message->GetStartColumn();
+        int start = message->GetStartColumn(context).FromJust();
         for (int i = 0; i < start; i++) {
             OutputWriter::OutputInfo(L" ");
         }
-        int end = message->GetEndColumn();
+        int end = message->GetEndColumn(context).FromJust();
         for (int i = start; i < end; i++) {
             OutputWriter::OutputInfo(L"^");
         }
         OutputWriter::OutputInfo(L"\n");
-        v8::String::Value stack_trace(try_catch->StackTrace());
+        v8::String::Value stack_trace(try_catch->StackTrace(context).ToLocalChecked());
         if (stack_trace.length() > 0) {
             auto stack_trace_string = ToWString(stack_trace);
             OutputWriter::OutputInfo(L"%s\n", stack_trace_string);
