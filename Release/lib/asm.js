@@ -68,6 +68,43 @@ function makeHookerFuncFromExp(exp)
 	};
 }
 
+/// 生成统计信息用的函数，表达式格式与makeHookerFuncFromExp中的相同
+/// @brief 生成统计信息用的函数
+/// @param exp 用于进行统计的表达式
+/// @param rslt 存储统计结果的对象
+/// @return 返回统计函数
+function makeSummFuncFromExp(exp, rslt)
+{
+	var eles=exp.split('#').map(function(e){return e.split('@')});
+
+	return function(regs){
+		with(regs)
+		{
+			for(var i=0;i<eles.length;i++)
+			{
+				var ele=eles[i];
+				var val;
+				if(ele[1])
+				{
+					if(eval(ele[1]))
+						val=eval(ele[0]).toString();
+					else
+						return;
+				}
+				else
+					val=eval(ele[0]).toString();
+
+				if(!rslt[i])
+					rslt[i]={};
+				if(!rslt[i][val])
+					rslt[i][val]=1;
+				else
+					rslt[i][val]++;
+			}
+		}
+	};
+}
+
 /// hook指定地址，在执行到该地址时，转入指定的js函数，执行完毕之后返回原处继续执行，视返回值决定是否修改寄存器的值。
 /// @brief hook一个地址
 /// @param addr 待hook的地址
@@ -356,6 +393,7 @@ var exp={
 	printOneDisasm:printOneDisasm,
 	printDisasms:printDisasms,
 	makeHookerFuncFromExp:makeHookerFuncFromExp,
+	makeSummFuncFromExp:makeSummFuncFromExp,
 	Hooker:Hooker,
 	Callback:Callback,
 	makeCdeclFunction:makeCdeclFunction,

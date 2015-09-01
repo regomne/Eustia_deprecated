@@ -71,8 +71,10 @@ require('mystring')(global);
 /// @return pack之后的字符串
 /// @function Convert.pack(format)
 
-module.exports.displayObject=function (obj,file)
+module.exports.displayObject=function (obj,file,hex)
 {
+  if(hex==undefined)
+    hex=16;
   var maxLevel=(typeof(file)=='number')?file:5;
   function display_(obj,level)
   {
@@ -88,7 +90,7 @@ module.exports.displayObject=function (obj,file)
       if(typeof(val)!='object')
       {
         if(typeof(val)=='number')
-          s+=val.toString(16)+',\r\n';
+          s+=val.toString(hex)+',\r\n';
         else
           s+=val+',\r\n';
       }
@@ -116,7 +118,7 @@ module.exports.displayObject=function (obj,file)
     print(s);
 }
 
-module.exports.isObjectSame=function (obj1,obj2)
+function isObjectSame(obj1,obj2)
 {
   if(obj1===obj2)
     return true;
@@ -149,7 +151,7 @@ module.exports.isObjectSame=function (obj1,obj2)
   }
   return true;
 }
-
+module.exports.isObjectSame=isObjectSame;
 
 var Convert={
   toU32: function(s,off,be)

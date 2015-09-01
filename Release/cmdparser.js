@@ -88,6 +88,49 @@ var ShortCmdTable=(function (){
 		else
 			print('hook failed.');
 	},
+	'.summ':function(addr, name){
+		if(arguments.length<3)
+		{
+			print('must have addr, name and exps!');
+			return;
+		}
+		var symbol='';
+		if(!(addr[0]>='0' && addr[0]<='9'))
+		{
+			symbol=addr;
+			addr=native.getAPIAddress(symbol);
+			if(!addr)
+			{
+				print("Can't find symbol:",symbol);
+				return;
+			}
+		}
+		else
+		{
+			addr=parseInt(addr,16);
+		}
+		if(asm.Hooker.hasHook(addr))
+		{
+			print(addr,'already hooked, please clear first');
+			return;
+		}
+
+		var args=[];
+		for(var i=1;i<arguments.length;i++)
+			args.push(arguments[i]);
+		var exp=args.join(' ');
+
+		eval(name+'={};');
+		var rslt=eval(name);
+		var ret=asm.Hooker.checkInfo(addr,asm.makeSummFuncFromExp(exp,rslt),symbol);
+		if(ret)
+		{
+			print('id',ret,'hooked.');
+			module.exports[name]=rslt;
+		}
+		else
+			print('hook failed.');
+	},
 	'.hl': function(){
 		var list=asm.Hooker.getHooks();
 		for(var i=1;i<list.length;i++)
