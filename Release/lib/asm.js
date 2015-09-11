@@ -6,7 +6,7 @@ var native=require('native');
 var utils=require('utils');
 requireAll('quickfunc',global);
 requireAll('func',global);
-require('mystring')(global);
+require('mystring')(String);
 /// @endcond
 
 /// 反汇编一行指令，并输出

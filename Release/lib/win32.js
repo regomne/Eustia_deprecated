@@ -5,7 +5,7 @@
 var asm=require('asm');
 var native=require('native');
 requireAll('quickfunc',global);
-require('mystring')(global);
+require('mystring')(String);
 /// @endcond
 
 /// 为Win32命名空间增加一个API。

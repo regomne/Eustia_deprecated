@@ -4,7 +4,7 @@
 /// @cond
 var Convert=require('utils').Convert;
 var native=require('native');
-require('mystring')(global);
+require('mystring')(String);
 
 var exp={};
 /// @endcond

@@ -4,7 +4,7 @@
 var native=require('native');
 var win32=require('win32');
 var asm=require('asm');
-require('myString')(global);
+require('myString')(String);
 
 var exp={};
 

@@ -7,7 +7,7 @@ var native=require('native');
 var win32=require('win32');
 var asm=require('asm');
 //cloneToGlobal(require('quickfunc'));
-require('mystring')(global);
+require('mystring')(String);
 
 var Parser_js_disStartAddress=0x401000;
 var Parser_js_dataStartAddress=0x400000;

@@ -3,7 +3,7 @@
 
 /// @cond
 var native=require('native');
-require('mystring')(global);
+require('mystring')(String);
 /// @endcond
 
 /// 读取一个map文件，将其中的函数名--地址表读取进来，以对象的形式存储。对于以数字开头的函数名，会把其第一个数字改为_。

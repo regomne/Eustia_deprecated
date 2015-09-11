@@ -1,7 +1,7 @@
 ﻿/// @file
 /// @brief 工具函数模块
 /// @cond
-require('mystring')(global);
+require('mystring')(String);
 /// @endcond
 
 /// 显示对象。
