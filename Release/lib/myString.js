@@ -46,6 +46,9 @@ var CryptoJS=require('CryptoJS');
 module.exports=function(StringObj)
 {
 
+if(StringObj.prototype.format!=undefined)
+  return;
+
 Object.defineProperty(StringObj.prototype,'format',{value:function(params)
 {
   var reg = /\{(\d+)\}/gm;
