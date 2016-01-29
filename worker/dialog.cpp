@@ -131,6 +131,8 @@ void ProcessEngineMsg(MSG* msg)
         V8::ShutdownPlatform();
         delete g_platform;
         DeleteCriticalSection(&g_v8ThreadLock);
+
+        UnhookWindowsHookEx(g_msgHook);
         //FreeLibrary(g_hModule);
     }
 

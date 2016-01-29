@@ -24,12 +24,12 @@ int WINAPI HookThread(LPARAM _)
         return 0;
     }
 
-    hHook = SetWindowsHookEx(WH_GETMESSAGE, (HOOKPROC)func, mod, 0);
-    if (!hHook)
-    {
-        MessageBox(0, L"Can't set windows hook message!", 0, 0);
-        return 0;
-    }
+    //hHook = SetWindowsHookEx(WH_GETMESSAGE, (HOOKPROC)func, mod, 0);
+    //if (!hHook)
+    //{
+    //    MessageBox(0, L"Can't set windows hook message!", 0, 0);
+    //    return 0;
+    //}
     func = GetProcAddress(mod, "KeyboardProc");
     if (!func)
     {

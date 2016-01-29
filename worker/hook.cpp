@@ -25,6 +25,7 @@ DWORD g_CompFlagIndex;
 DWORD g_myWindowThreadId;
 DWORD g_hookWindowThreadId;
 DWORD g_UIThreadId;
+HHOOK g_msgHook;
 
 wstring g_dllPath;
 
@@ -289,6 +290,27 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
     return TRUE;
 }
 
+int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
+{
+    static bool installed = false;
+    auto msg = (MSG*)lParam;
+    //     char modName[300];
+    //     WM_CLOSE;
+    //     GetModuleFileNameA(0, modName, sizeof(modName) / sizeof(modName[0]));
+    //     if (!stricmp(modName, "D:\\Program Files\\Notepad++\\notepad++.exe") && (msg->message==7 || !installed))
+    //     {
+    //         installed = true;
+    //         DBGOUT(("GetMsgProc, %s msg: %x, wp: %x, lp: %x", modName, msg->message, msg->wParam, msg->lParam));
+    //     }
+
+    if (code >= 0 && CHECK_JSENGINE_MSG(msg->wParam, msg->lParam))
+    {
+        DBGOUT(("GetMsgProc, msg: %x, wp : %x, lp : %x", msg->message, msg->wParam, msg->lParam));
+        ProcessEngineMsg(msg);
+    }
+    return CallNextHookEx(NULL, code, wParam, lParam);
+}
+
 int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
 {
     static bool installed=false;
@@ -297,31 +319,21 @@ int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
     {
         installed = true;;
         g_hookWindowThreadId = GetCurrentThreadId();
-        DBGOUT(("KeyboardProc: tid=%d", g_hookWindowThreadId));
-        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, &g_myWindowThreadId);
-        
-        return TRUE;
-    }
-    return CallNextHookEx(NULL, code, wParam, lParam);
-}
 
-int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
-{
-    static bool installed = false;
-    auto msg = (MSG*)lParam;
-//     char modName[300];
-//     WM_CLOSE;
-//     GetModuleFileNameA(0, modName, sizeof(modName) / sizeof(modName[0]));
-//     if (!stricmp(modName, "D:\\Program Files\\Notepad++\\notepad++.exe") && (msg->message==7 || !installed))
-//     {
-//         installed = true;
-//         DBGOUT(("GetMsgProc, %s msg: %x, wp: %x, lp: %x", modName, msg->message, msg->wParam, msg->lParam));
-//     }
+        g_msgHook = SetWindowsHookEx(WH_GETMESSAGE, (HOOKPROC)GetMsgProc, NULL, g_hookWindowThreadId);
+        if (g_msgHook == NULL)
+        {
+            //MessageBox(0, L"Can't setup message hook!", 0, 0);
+            OutputDebugString(L"Can't setup message hook!");
+        }
+        else
+        {
 
-    if (code >= 0 && CHECK_JSENGINE_MSG(msg->wParam, msg->lParam))
-    {
-        DBGOUT(("GetMsgProc, msg: %x, wp : %x, lp : %x", msg->message, msg->wParam, msg->lParam));
-        ProcessEngineMsg(msg);
+            DBGOUT(("KeyboardProc: tid=%d", g_hookWindowThreadId));
+            CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, &g_myWindowThreadId);
+
+            return TRUE;
+        }
     }
     return CallNextHookEx(NULL, code, wParam, lParam);
 }
