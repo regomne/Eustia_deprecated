@@ -53,12 +53,12 @@ void LoadInitJsFiles(Isolate* isolate)
         EnableWindow(GetDlgItem(g_hDlgMain, IDC_INPUTCMD), FALSE);
     }*/
     auto initJsFileName = g_dllPath + L"init.js";
-    auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str());
+    auto name = String::NewFromTwoByte(isolate, (uint16_t*)initJsFileName.c_str(), NewStringType::kNormal).ToLocalChecked();
     auto source = ReadJSFile(isolate, initJsFileName.c_str());
     if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
     {
         OutputWriter::OutputInfo(L"Init Success.\r\n");
-        if (!context->Global()->Get(String::NewFromUtf8(isolate, "cmdparser"))->IsObject())
+        if (!context->Global()->Get(NEW_CONST_STRING8("cmdparser"))->IsObject())
         {
             OutputWriter::OutputInfo(L"can't find cmdparser, short cmd disabled.\r\n");
             EnableWindow(GetDlgItem(g_hDlgMain, IDC_INPUTCMD), FALSE);
@@ -73,21 +73,27 @@ void LoadInitJsFiles(Isolate* isolate)
 
 void ProcessEngineMsg(MSG* msg)
 {
+    auto isolate = g_mainIsolate;
+    static MyArrayBufferAllocator* abAlloc = nullptr;
     if (msg->message == JSENGINE_INIT)
     {
         g_platform = platform::CreateDefaultPlatform(0);
         V8::InitializePlatform(g_platform);
         V8::Initialize();
         Isolate::CreateParams create_params;
-        auto abAlloc = new MyArrayBufferAllocator(); //²»ÊÍ·Å
+        if (!abAlloc)
+        {
+            abAlloc = new MyArrayBufferAllocator();
+        }
         create_params.array_buffer_allocator = abAlloc;
         g_mainIsolate = Isolate::New(create_params);
+        isolate = g_mainIsolate;
         g_mainIsolate->Enter();
         {
             HandleScope scope(g_mainIsolate);
             auto context = InitV8();
             context->Enter();
-            context->Global()->Set(String::NewFromUtf8(g_mainIsolate, "global"), context->Global()->GetPrototype());
+            context->Global()->Set(NEW_CONST_STRING8("global"), context->Global()->GetPrototype());
             LoadInitJsFiles(g_mainIsolate);
         }
         InitializeCriticalSection(&g_v8ThreadLock);
@@ -96,12 +102,13 @@ void ProcessEngineMsg(MSG* msg)
     {
         EnterCriticalSection(&g_v8ThreadLock);
         
+        //don't know why have to set this. will crash if not set when inject to a exe with random base.
         g_mainIsolate->SetStackLimit(1);
         HandleScope scope(g_mainIsolate);
         auto cmd = (wchar_t*)msg->wParam;
 
-        auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd);
-        ExecuteString(g_mainIsolate, source, String::NewFromUtf8(g_mainIsolate, "console_main"), true, true);
+        auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd, NewStringType::kNormal).ToLocalChecked();
+        ExecuteString(g_mainIsolate, source, NEW_CONST_STRING8("console_main"), true, true);
         delete[] cmd;
         LeaveCriticalSection(&g_v8ThreadLock);
     }
@@ -109,9 +116,17 @@ void ProcessEngineMsg(MSG* msg)
     {
         HandleScope scope(g_mainIsolate);
         
+        delete g_cloneObjectMethod;
+        g_cloneObjectMethod = nullptr;
         g_mainIsolate->GetCurrentContext()->Exit();
         g_mainIsolate->Exit();
         g_mainIsolate->Dispose();
+        if (abAlloc)
+        {
+            delete abAlloc;
+            abAlloc = nullptr;
+        }
+
         V8::Dispose();
         V8::ShutdownPlatform();
         delete g_platform;
@@ -148,41 +163,41 @@ DWORD WINAPI UIProc(LPARAM param)
     return 0;
 }
 
-DWORD WINAPI CommandProc(LPARAM param)
-{
-    Isolate::CreateParams create_params;
-    auto isolate = Isolate::New(create_params);
-    isolate->Enter();
-
-    HandleScope handle_scope(isolate);
-
-    auto context = InitV8();
-    context->Enter();
-    
-    LoadInitJsFiles(isolate);
-
-    JSCommand cmd;
-    while (true)
-    {
-        if (CommandQueue.Dequeue(cmd))
-        {
-            if (cmd.text.get() == nullptr)
-                break;
-            auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd.text.get());
-            ExecuteString(isolate, source, String::NewFromUtf8(isolate, "console"), g_DisplayRslt, true);
-            if (cmd.compFlag)
-                SetEvent(cmd.compFlag);
-        }
-        else
-        {
-            Sleep(2);
-        }
-    }
-
-    context->Exit();
-    isolate->Exit();
-    return 0;
-}
+// DWORD WINAPI CommandProc(LPARAM param)
+// {
+//     Isolate::CreateParams create_params;
+//     auto isolate = Isolate::New(create_params);
+//     isolate->Enter();
+// 
+//     HandleScope handle_scope(isolate);
+// 
+//     auto context = InitV8();
+//     context->Enter();
+//     
+//     LoadInitJsFiles(isolate);
+// 
+//     JSCommand cmd;
+//     while (true)
+//     {
+//         if (CommandQueue.Dequeue(cmd))
+//         {
+//             if (cmd.text.get() == nullptr)
+//                 break;
+//             auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd.text.get());
+//             ExecuteString(isolate, source, String::NewFromUtf8(isolate, "console"), g_DisplayRslt, true);
+//             if (cmd.compFlag)
+//                 SetEvent(cmd.compFlag);
+//         }
+//         else
+//         {
+//             Sleep(2);
+//         }
+//     }
+// 
+//     context->Exit();
+//     isolate->Exit();
+//     return 0;
+// }
 DWORD WINAPI NewEditProc(
     _In_  HWND hwnd,
     _In_  UINT uMsg,
@@ -284,7 +299,7 @@ void ReadCmdAndExecute(HWND hEdit)
         wcscpy(str, cmd.text.get());
 
         PostThreadMessage(g_hookWindowThreadId, JSENGINE_RUNCMD, (WPARAM)str, MAKE_JSENGINE_PARAM(str));
-
+        DBGOUT(("ReadCmdAndExecute: tid=%d", g_hookWindowThreadId));
 
         SetWindowText(hEdit, L"");
     }
@@ -336,6 +351,7 @@ LRESULT WINAPI WndProc(
 
         CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, 0, 0, &g_UIThreadId);
         PostThreadMessage(g_hookWindowThreadId, JSENGINE_INIT, 0, MAKE_JSENGINE_PARAM(0));
+        DBGOUT(("WndProc: Init Completed. tid=%d", g_hookWindowThreadId));
         //commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, &commandThreadId);
         //if (!commandThread)
         //{

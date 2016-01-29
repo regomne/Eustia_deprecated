@@ -24,3 +24,8 @@ v8::Handle<v8::Value> ExecuteStringWithRet(v8::Isolate* isolate,
     v8::Handle<v8::Value> name,
     bool report_exceptions);
 v8::Handle<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name);
+
+extern v8::Persistent<v8::Function, v8::CopyablePersistentTraits<v8::Function>>* g_cloneObjectMethod;
+
+#define NEW_CONST_STRING8(str) String::NewFromUtf8(isolate, (str), NewStringType::kNormal).ToLocalChecked()
+#define NEW_CONST_STRINGU(str) String::NewFromTwoByte(isolate, (uint16_t*)(str), NewStringType::kNormal).ToLocalChecked()

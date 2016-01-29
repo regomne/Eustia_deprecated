@@ -297,6 +297,7 @@ int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
     {
         installed = true;;
         g_hookWindowThreadId = GetCurrentThreadId();
+        DBGOUT(("KeyboardProc: tid=%d", g_hookWindowThreadId));
         CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, &g_myWindowThreadId);
         
         return TRUE;
@@ -308,10 +309,18 @@ int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
 {
     static bool installed = false;
     auto msg = (MSG*)lParam;
-    //DBGOUT(("captured, msg: %x, wp: %x, lp: %x", cwp->message, cwp->wParam, cwp->lParam));
+//     char modName[300];
+//     WM_CLOSE;
+//     GetModuleFileNameA(0, modName, sizeof(modName) / sizeof(modName[0]));
+//     if (!stricmp(modName, "D:\\Program Files\\Notepad++\\notepad++.exe") && (msg->message==7 || !installed))
+//     {
+//         installed = true;
+//         DBGOUT(("GetMsgProc, %s msg: %x, wp: %x, lp: %x", modName, msg->message, msg->wParam, msg->lParam));
+//     }
 
     if (code >= 0 && CHECK_JSENGINE_MSG(msg->wParam, msg->lParam))
     {
+        DBGOUT(("GetMsgProc, msg: %x, wp : %x, lp : %x", msg->message, msg->wParam, msg->lParam));
         ProcessEngineMsg(msg);
     }
     return CallNextHookEx(NULL, code, wParam, lParam);

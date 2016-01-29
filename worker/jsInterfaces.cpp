@@ -21,10 +21,7 @@
 using namespace v8;
 using namespace std;
 
-//Persistent<ObjectTemplate, CopyablePersistentTraits<ObjectTemplate>> g_globalTemplate;
-
-#define NEW_CONST_STRING8(str) String::NewFromUtf8(isolate, (str), NewStringType::kNormal).ToLocalChecked()
-#define NEW_CONST_STRINGU(str) String::NewFromTwoByte(isolate, (uint16_t*)(str), NewStringType::kNormal).ToLocalChecked()
+Persistent<Function, CopyablePersistentTraits<Function>>* g_cloneObjectMethod;
 
 #define THROW_EXCEPTION(str) isolate->ThrowException(Exception::Error(NEW_CONST_STRINGU(str)))
 
@@ -416,8 +413,8 @@ static void Disassmble(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(1);
 
-
-    auto eip = args[0]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    auto eip = args[0]->Uint32Value(ctx).FromMaybe(0);
     //auto addr = args[1]->Uint32Value();
 
     DISASM disasm = { 0 };
@@ -440,21 +437,29 @@ static void Disassmble(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
 
     auto obj = Object::New(isolate);
-    obj->Set(String::NewFromOneByte(isolate, (uint8_t*)"length"), Integer::NewFromUnsigned(isolate, len));
-    obj->Set(String::NewFromOneByte(isolate, (uint8_t*)"string"), String::NewFromOneByte(isolate, (uint8_t*)disasm.CompleteInstr));
+    Local<String> ss;
+    obj->Set(NEW_CONST_STRING8("length"), Integer::NewFromUnsigned(isolate, len));
+    bool bCvt = String::NewFromOneByte(isolate, (uint8_t*)disasm.CompleteInstr, NewStringType::kNormal, -1).ToLocal(&ss);
+    if (!bCvt)
+    {
+        THROW_EXCEPTION(L"Can't cvt bytes to string!");
+        return;
+    }
+    obj->Set(NEW_CONST_STRING8("string"), ss);
     args.GetReturnValue().Set(obj);
 }
 
 static void CheckInfoHook(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
+    auto isolate = args.GetIsolate();
     if (args.Length() != 1 || !args[0]->IsUint32())
     {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        THROW_EXCEPTION(L"Bad parameters");
         return;
     }
 
-    auto addr = args[0]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    auto addr = args[0]->Uint32Value(ctx).FromMaybe(0);
     if (!CheckInfoHook2((PVOID)addr))
     {
         args.GetReturnValue().Set(false);
@@ -471,9 +476,10 @@ static void NewCallback(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(3);
 
-    auto funcId = args[0]->Uint32Value();
-    auto argsCnt = args[1]->Uint32Value();
-    auto funcType = (FunctionCallType)args[2]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    auto funcId = args[0]->Uint32Value(ctx).FromMaybe(-1);
+    auto argsCnt = args[1]->Uint32Value(ctx).FromMaybe(0);
+    auto funcType = (FunctionCallType)args[2]->Uint32Value(ctx).FromMaybe(0);
 
     void* newFunc;
     if (!CreateNewFunction(funcId, argsCnt, funcType, &newFunc))
@@ -491,7 +497,8 @@ static void NewMem(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(1);
 
-    auto size = args[0]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    auto size = args[0]->Uint32Value(ctx).FromMaybe(0);
     void* mem = nullptr;
     try
     {
@@ -508,28 +515,29 @@ static void DeleteMem(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(1);
 
-    auto mem = (wchar_t*)args[0]->Uint32Value();
+    auto ctx = isolate->GetCurrentContext();
+    auto mem = (wchar_t*)args[0]->Uint32Value(ctx).FromMaybe(0);
     delete[] mem;
 }
 
 static void Unhook(const v8::FunctionCallbackInfo<v8::Value>& args)
 {
+    auto isolate = args.GetIsolate();
     if (args.Length() != 1 || !args[0]->IsUint32())
     {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        THROW_EXCEPTION(L"Bad parameters");
         return;
     }
 
-    auto addr = args[0]->Uint32Value();
+    auto addr = args[0]->Uint32Value(isolate->GetCurrentContext()).FromMaybe(0);
     RemoveHook((PVOID)addr);
 }
 
 
 // Reads a file into a v8 string.
-v8::Handle<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name) {
+v8::Local<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name) {
     FILE* file = _wfopen(name, L"rb");
-    if (file == NULL) return v8::Handle<v8::String>();
+    if (file == NULL) return v8::Local<v8::String>();
 
     fseek(file, 0, SEEK_END);
     int size = ftell(file);
@@ -544,20 +552,24 @@ v8::Handle<v8::String> ReadJSFile(v8::Isolate* isolate, const wchar_t* name) {
     }
     fclose(file);
 
-    v8::Handle<v8::String> result;
+    Local<String> result;
+    bool ret;
     if (size >= 3 && !memcmp(chars, "\xef\xbb\xbf", 3))
     {
-        result = v8::String::NewFromUtf8(isolate, chars + 3, v8::String::kNormalString, size - 3);
+        ret = String::NewFromUtf8(isolate, chars + 3, NewStringType::kNormal, size - 3).ToLocal(&result);
     }
     else if (size >= 2 && !memcmp(chars, "\xff\xfe", 2))
     {
-        result = v8::String::NewFromTwoByte(isolate, (uint16_t*)(chars + 2), v8::String::kNormalString, size / 2 - 1);
+        ret = String::NewFromTwoByte(isolate, (uint16_t*)(chars + 2), NewStringType::kNormal, size / 2 - 1).ToLocal(&result);
     }
     else
     {
-        result = v8::String::NewFromUtf8(isolate, chars, v8::String::kNormalString, size);
+        ret = String::NewFromUtf8(isolate, chars, NewStringType::kNormal, size).ToLocal(&result);
     }
     delete[] chars;
+    if (!ret)
+        return Local<String>();
+
     return result;
 }
 
@@ -581,21 +593,19 @@ static void Print(const v8::FunctionCallbackInfo<v8::Value>& args) {
 // function is called.  This function loads the content of the file named in
 // the argument into a JavaScript string.
 static void ReadText(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    auto isolate = args.GetIsolate();
     if (args.Length() != 1) {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Bad parameters"));
+        THROW_EXCEPTION(L"Bad parameters");
         return;
     }
     v8::String::Value file(args[0]);
     if (*file == NULL) {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Error loading filename"));
+        THROW_EXCEPTION(L"Error loading filename");
         return;
     }
-    v8::Handle<v8::String> source = ReadJSFile(args.GetIsolate(), (wchar_t*)*file);
+    v8::Local<v8::String> source = ReadJSFile(isolate, (wchar_t*)*file);
     if (source.IsEmpty()) {
-        args.GetIsolate()->ThrowException(
-            v8::String::NewFromUtf8(args.GetIsolate(), "Error loading file"));
+        THROW_EXCEPTION(L"Error loading file");
         return;
     }
     args.GetReturnValue().Set(source);
@@ -606,9 +616,10 @@ static void WriteText(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(3);
 
+    auto ctx = isolate->GetCurrentContext();
     String::Value fname(args[0]);
     auto buff = args[1]->ToString();
-    auto isTwoByte = args[2]->Uint32Value();
+    auto isTwoByte = args[2]->Uint32Value(ctx).FromMaybe(0);
     
     if (*fname == NULL)
     {
@@ -659,42 +670,39 @@ static void WriteText(const v8::FunctionCallbackInfo<v8::Value>& args)
 // function is called.  Loads, compiles and executes its argument
 // JavaScript file.
 static void LoadJS(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    auto isolate = args.GetIsolate();
     for (int i = 0; i < args.Length(); i++) {
-        v8::HandleScope handle_scope(args.GetIsolate());
+        v8::HandleScope handle_scope(isolate);
         v8::String::Value file(args[i]);
         if (*file == NULL) {
-            args.GetIsolate()->ThrowException(
-                v8::String::NewFromUtf8(args.GetIsolate(), "Error loading filename"));
+            THROW_EXCEPTION(L"Error loading filename");
             return;
         }
-        v8::Handle<v8::String> source = ReadJSFile(args.GetIsolate(), (wchar_t*)*file);
+        v8::Local<v8::String> source = ReadJSFile(isolate, (wchar_t*)*file);
         if (source.IsEmpty()) {
-            args.GetIsolate()->ThrowException(
-                v8::String::NewFromUtf8(args.GetIsolate(), "Error loading file"));
+            THROW_EXCEPTION(L"Error loading file");
             return;
         }
+        //Local<String> fname
         if (!ExecuteString(args.GetIsolate(),
             source,
-            v8::String::NewFromTwoByte(args.GetIsolate(), *file),
+            args[i],
             false,
             true)) {
-            args.GetIsolate()->ThrowException(
-                v8::String::NewFromUtf8(args.GetIsolate(), "Error executing file"));
+            THROW_EXCEPTION(L"Error executing file");
             return;
         }
     }
 }
-
 
 void CloneObject(Isolate* isolate, Handle<Value> source, Handle<Value> target)
 {
     HandleScope scope(isolate);
 
     Handle<Value> args[] = { source, target };
-    static Persistent<Function,CopyablePersistentTraits<Function>> g_cloneObjectMethod;
 
     // Init
-    if (g_cloneObjectMethod.IsEmpty()) {
+    if (g_cloneObjectMethod == nullptr) {
         Handle<Function> cloneObjectMethod_ = Handle<Function>::Cast(
             Script::Compile(NEW_CONST_STRING8(
             "(function(source, target) {\n\
@@ -708,11 +716,11 @@ void CloneObject(Isolate* isolate, Handle<Value> source, Handle<Value> target)
             }\n\
             });\n\
             })"), String::NewFromUtf8(isolate,"binding:script"))->Run());
-        g_cloneObjectMethod = Persistent<Function, CopyablePersistentTraits<Function>>(isolate,cloneObjectMethod_);
+        g_cloneObjectMethod = new Persistent<Function, CopyablePersistentTraits<Function>>(isolate,cloneObjectMethod_);
     }
 
     auto recv_ = Object::New(isolate);
-    auto clone = Local<Function>::New(isolate, g_cloneObjectMethod);
+    auto clone = Local<Function>::New(isolate, *g_cloneObjectMethod);
     clone->Call(recv_, 2, args);
 }
 //import(context,content,filename)
@@ -763,7 +771,7 @@ static void ToFloat(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(1);
 
-    auto val = args[0]->Uint32Value();
+    auto val = args[0]->Uint32Value(isolate->GetCurrentContext()).FromMaybe(0);
     args.GetReturnValue().Set(Number::New(isolate, (double)(*(float*)&val)));
 }
 static void ToFloatp(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -771,7 +779,7 @@ static void ToFloatp(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(1);
 
-    auto val = args[0]->Uint32Value();
+    auto val = args[0]->Uint32Value(isolate->GetCurrentContext()).FromMaybe(0);
     args.GetReturnValue().Set(Number::New(isolate, (double)*(float*)val));
 }
 static void ToDoublep(const v8::FunctionCallbackInfo<v8::Value>& args)
@@ -779,7 +787,7 @@ static void ToDoublep(const v8::FunctionCallbackInfo<v8::Value>& args)
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(1);
 
-    auto val = args[0]->Uint32Value();
+    auto val = args[0]->Uint32Value(isolate->GetCurrentContext()).FromMaybe(0);
     args.GetReturnValue().Set(Number::New(isolate, *(double*)val));
 }
 
@@ -790,7 +798,7 @@ static void OutputStateGetter(Local<String> prop, const PropertyCallbackInfo<Val
 
 static void OutputStateSetter(Local<String> prop, Local<Value> value, const PropertyCallbackInfo<void>& info)
 {
-    auto st = value->Uint32Value();
+    auto st = value->Uint32Value(info.GetIsolate()->GetCurrentContext()).FromMaybe(0);
     OutputWriter::ChangeOutputStream((OutputWriter::DispState)st);
 }
 
@@ -853,7 +861,7 @@ static void CreateIntervalThread(const v8::FunctionCallbackInfo<v8::Value>& args
     auto isolate = args.GetIsolate();
     CHECK_ARGS_COUNT(1);
 
-    auto param = args[0]->Uint32Value();
+    auto param = args[0]->Uint32Value(isolate->GetCurrentContext()).FromMaybe(0);
     if (!param)
     {
         THROW_EXCEPTION(L"arg 1 must be a pointer!");
@@ -918,12 +926,12 @@ Handle<Context> InitV8()
 
     for (int i = 0; i < sizeof(funcList) / sizeof(FuncList); i++)
     {
-        global->Set(String::NewFromUtf8(isolate, funcList[i].funcName), FunctionTemplate::New(isolate, funcList[i].callBack));
+        global->Set(String::NewFromUtf8(isolate, funcList[i].funcName, NewStringType::kNormal).ToLocalChecked(), FunctionTemplate::New(isolate, funcList[i].callBack));
     }
 
-    global->Set(v8::String::NewFromUtf8(isolate, "_DllPath"), v8::String::NewFromTwoByte(isolate, (uint16_t*)g_dllPath.c_str()));
-    global->Set(v8::String::NewFromUtf8(isolate, "_MyWindowThreadId"), Integer::NewFromUnsigned(isolate,g_myWindowThreadId));
-    global->SetAccessor(String::NewFromUtf8(isolate, "_OutputState"), OutputStateGetter, OutputStateSetter);
+    global->Set(NEW_CONST_STRING8("_DllPath"), String::NewFromTwoByte(isolate, (uint16_t*)g_dllPath.c_str(), NewStringType::kNormal).ToLocalChecked());
+    global->Set(NEW_CONST_STRING8("_MyWindowThreadId"), Integer::NewFromUnsigned(isolate,g_myWindowThreadId));
+    global->SetAccessor(NEW_CONST_STRING8("_OutputState"), OutputStateGetter, OutputStateSetter);
     
     //g_globalTemplate = Persistent<ObjectTemplate, CopyablePersistentTraits<ObjectTemplate>>(isolate, global);
     //auto gl = Local<ObjectTemplate>::New(isolate, g_globalTemplate);
