@@ -112,9 +112,9 @@ module.exports.displayObject=function (obj,file,hex)
     return s;
   }
   var s=display_(obj,0);
-  if(file!=undefined)
-    writeText(file,s);
-  else
+  // if(typeof(file)=='string')
+  //   writeText(file,s);
+  // else
     print(s);
 }
 

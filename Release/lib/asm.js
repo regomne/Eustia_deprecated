@@ -339,17 +339,9 @@ var Callback={
 /// @param addr 函数地址
 /// @return 生成的函数
 /// @remark 生成的函数在调用时可传递任意个数的参数，但是若数量错误可能会导致崩溃
-function makeThiscallFunction(addr)
+function makeThiscallFunction(addr,retType='')
 {
-	return function()
-	{
-		var args=[addr,'stdcall',{ecx:arguments[0]}];
-		for(var i=1;i<arguments.length;i++)
-		{
-			args.push(arguments[i]);
-		}
-		return native.callFunction.apply(this,args);
-	}
+	return (obj,...args)=>native.callFunction(addr,'stdcall'+retType,{ecx:obj},...args);
 }
 
 /// 根据函数地址生成__stdcall类型的函数。
@@ -357,17 +349,9 @@ function makeThiscallFunction(addr)
 /// @param addr 函数地址
 /// @return 生成的函数
 /// @remark 生成的函数在调用时可传递任意个数的参数，但是若数量错误可能会导致崩溃
-function makeStdcallFunction(addr)
+function makeStdcallFunction(addr,retType='')
 {
-	return function()
-	{
-		var args=[addr,'stdcall',{}];
-		for(var i=0;i<arguments.length;i++)
-		{
-			args.push(arguments[i]);
-		}
-		return native.callFunction.apply(this,args);
-	}
+	return (...args)=>native.callFunction(addr,'stdcall'+retType,{},...args);
 }
 
 /// 根据函数地址生成__cdecl类型的函数。
@@ -375,17 +359,9 @@ function makeStdcallFunction(addr)
 /// @param addr 函数地址
 /// @return 生成的函数
 /// @remark 生成的函数在调用时可传递任意个数的参数，但是若数量错误可能会导致崩溃
-function makeCdeclFunction(addr)
+function makeCdeclFunction(addr,retType='')
 {
-	return function()
-	{
-		var args=[addr,'cdecl',{}];
-		for(var i=0;i<arguments.length;i++)
-		{
-			args.push(arguments[i]);
-		}
-		return native.callFunction.apply(this,args);
-	}
+	return (...args)=>native.callFunction(addr,'cdecl'+retType,{},...args);
 }
 
 /// @cond

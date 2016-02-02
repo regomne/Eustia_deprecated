@@ -9,7 +9,7 @@ var exp={};
 /// @param addr 函数地址
 /// @param callType 调用约定类型，可以是stdcall cdecl中的一个
 /// @param regs 寄存器对象
-/// @param ... 之后跟随所有需要push的参数
+/// @param ...rargs 之后跟随所有需要push的参数
 /// @return 调用之后的eax值
 /// @function callFunction(addr,callType,regs)
 
@@ -140,24 +140,37 @@ var exp={};
 /// @function createIntervalThread(ptr)
 
 /// @cond
-exp.callFunction=function(addr,callType,regs) //其他参数附在后面
+exp.callFunction=function(addr,callType,regs,...rargs)
 {
-	var rcallType=0;
-	switch(callType)
+	let rcallType=0;
+	let retType='eax';
+	if(callType.indexOf('cdecl')!=-1)
 	{
-		case 'cdecl':
-			rcallType=0;
-			break;
-		case 'stdcall':
-			rcallType=1;
-			break;
-		default:
-			print(callType);
-			throw new Error("call type error!");
+		rcallType=0;
+	}
+	else if(callType.indexOf('stdcall')!=-1)
+	{
+		rcallType=1;
+	}
+	else
+	{
+		print(callType);
+		throw new Error("call type error!");
+	}
+
+	if(callType.indexOf('fpu')!=-1)
+	{
+		retType='fpu';
+		rcallType|=0x10;
+	}
+	else if(callType.indexOf('xmm')!=-1)
+	{
+		retType='xmm';
+		rcallType|=0x20;
 	}
 	
-	var rregs={};
-	for(var reg in regs)
+	let rregs={};
+	for(let reg in regs)
 	{
 		switch(reg)
 		{
@@ -172,13 +185,23 @@ exp.callFunction=function(addr,callType,regs) //其他参数附在后面
 		}
 	}
 	
-	var rargs=[];
-	for(var i=arguments.length-1;i>=3;i--)
+	let retArr=_CallFunction(addr,rcallType,rregs,rargs.reverse());
+	switch(retType)
 	{
-		rargs.push(arguments[i]);
+	case 'eax':
+		retArr=retArr[0];
+		break;
+	case 'fpu':
+		retArr=retArr[2];
+		break;
+	case 'xmm':
+		retArr=retArr[3]
+		break;
+	default:
+		throw "error";
 	}
-	
-	return _CallFunction(addr,rcallType,rregs,rargs);
+
+	return retArr;
 }
 
 exp.disassemble=function (addr)

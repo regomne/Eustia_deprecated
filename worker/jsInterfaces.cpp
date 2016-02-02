@@ -257,6 +257,7 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
             {
                 regFlags |= (1 << i);
                 *((DWORD*)&regs + (i + 1)) = regsObj->Get(ctx, i).ToLocalChecked()->Uint32Value(ctx).FromMaybe(0);
+                DBGOUT(("register has i: %d, value: %x", i, *((DWORD*)&regs + (i + 1))));
             }
         }
     }
@@ -279,7 +280,7 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
             arguments.push_back(arg);
         }
     }
-    DWORD callRetVal = 0;
+    ReturnValues callRetVal = { 0 };
     auto callRslt = CallFunction(funcAddr, callType, arguments, regFlags, &regs, &callRetVal);
     for (int i = pointers.size() - 1; i >= 0; i--)
     {
@@ -291,7 +292,12 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
     }
     else
     {
-        args.GetReturnValue().Set((uint32_t)callRetVal);
+        auto retArr = Array::New(isolate, 4);
+        retArr->Set(0, Integer::NewFromUnsigned(isolate, callRetVal.eax));
+        retArr->Set(1, Integer::NewFromUnsigned(isolate, callRetVal.edx));
+        retArr->Set(2, Number::New(isolate, (double)callRetVal.st0));
+        retArr->Set(3, Integer::NewFromUnsigned(isolate, callRetVal.xmm0));
+        args.GetReturnValue().Set(retArr);
     }
 }
 

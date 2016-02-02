@@ -114,8 +114,6 @@ void ProcessEngineMsg(MSG* msg)
     }
     else if (msg->message == JSENGINE_EXIT)
     {
-        HandleScope scope(g_mainIsolate);
-        
         delete g_cloneObjectMethod;
         g_cloneObjectMethod = nullptr;
         g_mainIsolate->GetCurrentContext()->Exit();
