@@ -7,6 +7,7 @@
 #define MYSUCCESS(x) ((x)==0)
 
 #define PIPE_NAME (L"\\\\.\\pipe\\ControllerPipe%d")
+#define SHARE_MEM_NAME (L"EustiaController_mapping")
 
 #define DLL_NAME L"wnmkey.dll"
 

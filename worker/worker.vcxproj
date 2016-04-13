@@ -87,6 +87,8 @@
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <ModuleDefinitionFile>export.def</ModuleDefinitionFile>
       <OutputFile>$(OutDir)\wnmkey.dll</OutputFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>worker.map</MapFileName>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

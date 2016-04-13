@@ -75,7 +75,7 @@ void ProcessEngineMsg(MSG* msg)
 {
     auto isolate = g_mainIsolate;
     static MyArrayBufferAllocator* abAlloc = nullptr;
-    if (msg->message == JSENGINE_INIT)
+    if (msg->message == JSENGINE_INIT && !isolate)
     {
         g_platform = platform::CreateDefaultPlatform(0);
         V8::InitializePlatform(g_platform);
@@ -88,37 +88,42 @@ void ProcessEngineMsg(MSG* msg)
         create_params.array_buffer_allocator = abAlloc;
         g_mainIsolate = Isolate::New(create_params);
         isolate = g_mainIsolate;
-        g_mainIsolate->Enter();
+        isolate->Enter();
         {
-            HandleScope scope(g_mainIsolate);
+            HandleScope scope(isolate);
             auto context = InitV8();
             context->Enter();
             context->Global()->Set(NEW_CONST_STRING8("global"), context->Global()->GetPrototype());
-            LoadInitJsFiles(g_mainIsolate);
+            LoadInitJsFiles(isolate);
         }
         InitializeCriticalSection(&g_v8ThreadLock);
     }
-    else if (msg->message == JSENGINE_RUNCMD)
+    else if (msg->message == JSENGINE_RUNCMD && isolate)
     {
         EnterCriticalSection(&g_v8ThreadLock);
         
         //don't know why have to set this. will crash if not set when inject to a exe with random base.
-        g_mainIsolate->SetStackLimit(1);
-        HandleScope scope(g_mainIsolate);
+        isolate->SetStackLimit(1);
+        HandleScope scope(isolate);
         auto cmd = (wchar_t*)msg->wParam;
 
-        auto source = String::NewFromTwoByte(g_mainIsolate, (uint16_t*)cmd, NewStringType::kNormal).ToLocalChecked();
-        ExecuteString(g_mainIsolate, source, NEW_CONST_STRING8("console_main"), true, true);
+        auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd, NewStringType::kNormal).ToLocalChecked();
+        ExecuteString(isolate, source, NEW_CONST_STRING8("console_main"), true, true);
         delete[] cmd;
         LeaveCriticalSection(&g_v8ThreadLock);
     }
-    else if (msg->message == JSENGINE_EXIT)
+    else if (msg->message == JSENGINE_EXIT && isolate)
     {
-        delete g_cloneObjectMethod;
-        g_cloneObjectMethod = nullptr;
-        g_mainIsolate->GetCurrentContext()->Exit();
-        g_mainIsolate->Exit();
-        g_mainIsolate->Dispose();
+        {
+            HandleScope scope(isolate);
+            delete g_cloneObjectMethod;
+            g_cloneObjectMethod = nullptr;
+            isolate->GetCurrentContext()->Exit();
+        }
+
+        isolate->Exit();
+        isolate->Dispose();
+        g_mainIsolate = nullptr;
         if (abAlloc)
         {
             delete abAlloc;
@@ -130,7 +135,10 @@ void ProcessEngineMsg(MSG* msg)
         delete g_platform;
         DeleteCriticalSection(&g_v8ThreadLock);
 
-        UnhookWindowsHookEx(g_msgHook);
+        if (!g_isIndependent)
+        {
+            UnhookWindowsHookEx(g_msgHook);
+        }
         //FreeLibrary(g_hModule);
     }
 

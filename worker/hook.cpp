@@ -26,6 +26,7 @@ DWORD g_myWindowThreadId;
 DWORD g_hookWindowThreadId;
 DWORD g_UIThreadId;
 HHOOK g_msgHook;
+int g_isIndependent;
 
 wstring g_dllPath;
 
@@ -224,8 +225,6 @@ DWORD WINAPI SendingProc(LPARAM param)
     return 0;
 }
 
-
-
 int WINAPI WindowThread(LPARAM _)
 {
     /*INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_PROGRESS_CLASS };
@@ -274,6 +273,21 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
             return FALSE;
         }
 
+        {
+            //读取是否是独立线程
+            auto hf = OpenFileMapping(FILE_MAP_READ, FALSE, SHARE_MEM_NAME);
+            if (hf != INVALID_HANDLE_VALUE)
+            {
+                BYTE* ptr = (BYTE*)MapViewOfFile(hf, FILE_MAP_READ, 0, 0, 1);
+                if (ptr)
+                {
+                    g_isIndependent = *ptr;
+                    UnmapViewOfFile(ptr);
+                }
+                CloseHandle(hf);
+            }
+        }
+
         break;
     case DLL_THREAD_ATTACH:
         ThreadData::EnterThread();
@@ -290,6 +304,25 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
     return TRUE;
 }
 
+//如果使用独立线程，则采用此函数
+int WINAPI V8Thread(LPARAM _)
+{
+    MSG msg;
+    while (GetMessage(&msg, (HWND)-1, 0, 0))
+    {
+        if (CHECK_JSENGINE_MSG(msg.wParam, msg.lParam))
+        {
+            ProcessEngineMsg(&msg);
+            if (msg.message == JSENGINE_EXIT)
+            {
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
+//非独立线程时，使用此钩子回调
 int WINAPI GetMsgProc(int code, WPARAM wParam, LPARAM lParam)
 {
     static bool installed = false;
@@ -318,22 +351,33 @@ int WINAPI KeyboardProc(int code, WPARAM wParam, LPARAM lParam)
     if (!installed && code>=0 && wParam == VK_F11)
     {
         installed = true;;
-        g_hookWindowThreadId = GetCurrentThreadId();
 
-        g_msgHook = SetWindowsHookEx(WH_GETMESSAGE, (HOOKPROC)GetMsgProc, NULL, g_hookWindowThreadId);
-        if (g_msgHook == NULL)
+        if (g_isIndependent)
         {
-            //MessageBox(0, L"Can't setup message hook!", 0, 0);
-            OutputDebugString(L"Can't setup message hook!");
+            HANDLE ht = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)V8Thread, 0, 0, &g_hookWindowThreadId);
+            if (ht == NULL)
+            {
+                DBGOUT(("KeyboardProc: Can't create v8 thread"));
+                g_hookWindowThreadId = 0;
+            }
         }
         else
         {
+            g_hookWindowThreadId = GetCurrentThreadId();
 
-            DBGOUT(("KeyboardProc: tid=%d", g_hookWindowThreadId));
-            CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, &g_myWindowThreadId);
-
-            return TRUE;
+            g_msgHook = SetWindowsHookEx(WH_GETMESSAGE, (HOOKPROC)GetMsgProc, NULL, g_hookWindowThreadId);
+            if (g_msgHook == NULL)
+            {
+                //MessageBox(0, L"Can't setup message hook!", 0, 0);
+                OutputDebugString(L"KeyboardProc: Can't setup message hook!");
+                g_hookWindowThreadId = 0;
+            }
         }
+
+        DBGOUT(("KeyboardProc: tid=%d, isIndependent=%d", g_hookWindowThreadId, g_isIndependent));
+        CreateThread(0, 0, (LPTHREAD_START_ROUTINE)WindowThread, 0, 0, &g_myWindowThreadId);
+
+        return TRUE;
     }
     return CallNextHookEx(NULL, code, wParam, lParam);
 }

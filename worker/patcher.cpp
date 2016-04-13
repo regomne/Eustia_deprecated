@@ -79,13 +79,16 @@ CRITICAL_SECTION g_v8ThreadLock;
 
 void HOOKFUNC MyGetInfo2(Registers* regs, PVOID srcAddr)
 {
+    //防止重入
     auto entered = ThreadData::GetEnterFlag()&ENTER_FLAG_CHECK_INFO;
     if (entered)
         return;
     ThreadData::SetEnterFlag(entered|ENTER_FLAG_CHECK_INFO);
 
+    //加锁
     EnterCriticalSection(&g_v8ThreadLock);
 
+    //切换线程
     int curId = GetCurrentThreadId();
     if (curId != g_hookWindowThreadId)
     {
