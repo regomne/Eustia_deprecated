@@ -3,6 +3,7 @@
 #include "luaInterface.h"
 #include "dialog.h"
 #include "asm.h"
+#include "misc.h"
 #include <vector>
 
 using namespace std;
@@ -158,6 +159,21 @@ void InitLuajit(lua_State* L)
     {
         lua_register(L, funcList[i].funcName, funcList[i].func);
     }
+
+    lua_pushstring(L, g_dllPathA.c_str());
+    lua_setglobal(L, "_DllPath");
+
+    char* initScript;
+    int textLen;
+    bool ret = ReadUtf8Text((g_dllPath + L"init.lua").c_str(), &initScript, &textLen);
+    if (!ret)
+    {
+        OutputWriter::OutputInfo(L"can't find init.lua\r\n");
+    }
+    else
+    {
+        ExecuteLuaString(L, initScript);
+    }
 }
 
 //script is a utf8 string which ends with zero
@@ -207,6 +223,5 @@ void ExecuteLuaString(lua_State* L, char* script)
         delete[] ret;
     }
 }
-
 
 #endif

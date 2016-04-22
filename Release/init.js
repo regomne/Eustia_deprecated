@@ -116,3 +116,5 @@ cloneObject(native,global);
 cloneObject(utils,global);
 cloneObject(asm,global);
 cloneObject(memory,global);
+
+print('init.js loaded.');

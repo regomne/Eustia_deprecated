@@ -1,4 +1,4 @@
-local modname='native'
+--local modname='native'
 local M={}
 --_G[modname]=M
 

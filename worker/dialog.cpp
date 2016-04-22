@@ -63,7 +63,6 @@ void LoadInitJsFiles(Isolate* isolate)
     auto source = ReadJSFile(isolate, initJsFileName.c_str());
     if (!source.IsEmpty() && ExecuteString(isolate, source, name, false, true))
     {
-        OutputWriter::OutputInfo(L"Init Success.\r\n");
         if (!context->Global()->Get(NEW_CONST_STRING8("cmdparser"))->IsObject())
         {
             OutputWriter::OutputInfo(L"can't find cmdparser, short cmd disabled.\r\n");

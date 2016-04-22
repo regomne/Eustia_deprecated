@@ -29,6 +29,7 @@ HHOOK g_msgHook;
 int g_isIndependent;
 
 wstring g_dllPath;
+string g_dllPathA;
 
 ConcurrentQueue<InstructionPack> SendingQueue;
 
@@ -237,6 +238,7 @@ int WINAPI WindowThread(LPARAM _)
 int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
 {
     g_hModule = (HINSTANCE)hDllHandle;
+    int len;
     //HANDLE val;
     //DisableThreadLibraryCalls((HMODULE)hDllHandle);
 
@@ -265,6 +267,17 @@ int WINAPI DllMain(HANDLE hDllHandle, DWORD dwReason, LPVOID lpreserved)
         if (g_dllPath.length() == 0)
         {
             MessageBox(0, L"Can't get dll path", 0, 0);
+        }
+        len = WideCharToMultiByte(CP_UTF8, 0, g_dllPath.c_str(), -1, 0, 0, 0, 0);
+        if (len > 0)
+        {
+            auto astr = new char[len];
+            if (astr)
+            {
+                len = WideCharToMultiByte(CP_UTF8, 0, g_dllPath.c_str(), -1, astr, len, 0, 0);
+                g_dllPathA = astr;
+                delete[] astr;
+            }
         }
 
         if (!ThreadData::Init())
