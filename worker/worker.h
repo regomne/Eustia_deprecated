@@ -5,6 +5,9 @@
 
 #include "ConcurrentQueue.h"
 
+//enable lua interface
+#define ENABLE_LUA 1
+
 extern HINSTANCE g_hModule;
 extern DWORD g_CompFlagIndex;
 extern std::wstring g_dllPath;

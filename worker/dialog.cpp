@@ -13,6 +13,7 @@
 #include <include/v8.h>
 #include <include/libplatform/libplatform.h>
 #include "jsInterfaces.h"
+#include "luaInterface.h"
 #include "worker.h"
 #include "misc.h"
 #include "patcher.h"
@@ -25,6 +26,7 @@ using namespace std;
 
 static const bool g_DisplayRslt = true; //是否显示每条js指令的返回值
 //long g_isProcessed = 0;
+ScriptType g_CurScriptType = ScriptType::JavaScript;
 
 static CommandBuffer g_CmdBuffer; //js输入缓冲
 static CommandBuffer g_ShortCmdBuffer; //短命令缓冲
@@ -37,8 +39,12 @@ ConcurrentQueue<JSCommand> CommandQueue; //js命令队列
 HWND g_hDlgMain;
 static WNDPROC g_OldEditProc;
 
+//global info of v8
 Isolate* g_mainIsolate;
 Platform* g_platform;
+
+//global info of luajit
+lua_State* g_luaState;
 
 void LoadInitJsFiles(Isolate* isolate)
 {
@@ -75,72 +81,124 @@ void ProcessEngineMsg(MSG* msg)
 {
     auto isolate = g_mainIsolate;
     static MyArrayBufferAllocator* abAlloc = nullptr;
-    if (msg->message == JSENGINE_INIT && !isolate)
+    switch (msg->message)
     {
-        g_platform = platform::CreateDefaultPlatform(0);
-        V8::InitializePlatform(g_platform);
-        V8::Initialize();
-        Isolate::CreateParams create_params;
-        if (!abAlloc)
+    case JSENGINE_INIT:
+        if(!isolate)
         {
-            abAlloc = new MyArrayBufferAllocator();
+            g_platform = platform::CreateDefaultPlatform(0);
+            V8::InitializePlatform(g_platform);
+            V8::Initialize();
+            Isolate::CreateParams create_params;
+            if (!abAlloc)
+            {
+                abAlloc = new MyArrayBufferAllocator();
+            }
+            create_params.array_buffer_allocator = abAlloc;
+            g_mainIsolate = Isolate::New(create_params);
+            isolate = g_mainIsolate;
+            isolate->Enter();
+            {
+                HandleScope scope(isolate);
+                auto context = InitV8();
+                context->Enter();
+                context->Global()->Set(NEW_CONST_STRING8("global"), context->Global()->GetPrototype());
+                LoadInitJsFiles(isolate);
+            }
+            InitializeCriticalSection(&g_v8ThreadLock);
         }
-        create_params.array_buffer_allocator = abAlloc;
-        g_mainIsolate = Isolate::New(create_params);
-        isolate = g_mainIsolate;
-        isolate->Enter();
+        break;
+    case JSENGINE_RUNCMD:
+        if(isolate)
         {
+            EnterCriticalSection(&g_v8ThreadLock);
+
+            //don't know why have to set this. will crash if not set when inject to a exe with random base.
+            isolate->SetStackLimit(1);
             HandleScope scope(isolate);
-            auto context = InitV8();
-            context->Enter();
-            context->Global()->Set(NEW_CONST_STRING8("global"), context->Global()->GetPrototype());
-            LoadInitJsFiles(isolate);
-        }
-        InitializeCriticalSection(&g_v8ThreadLock);
-    }
-    else if (msg->message == JSENGINE_RUNCMD && isolate)
-    {
-        EnterCriticalSection(&g_v8ThreadLock);
-        
-        //don't know why have to set this. will crash if not set when inject to a exe with random base.
-        isolate->SetStackLimit(1);
-        HandleScope scope(isolate);
-        auto cmd = (wchar_t*)msg->wParam;
+            auto cmd = (wchar_t*)msg->wParam;
 
-        auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd, NewStringType::kNormal).ToLocalChecked();
-        ExecuteString(isolate, source, NEW_CONST_STRING8("console_main"), true, true);
-        delete[] cmd;
-        LeaveCriticalSection(&g_v8ThreadLock);
-    }
-    else if (msg->message == JSENGINE_EXIT && isolate)
-    {
+            auto source = String::NewFromTwoByte(isolate, (uint16_t*)cmd, NewStringType::kNormal).ToLocalChecked();
+            ExecuteString(isolate, source, NEW_CONST_STRING8("console_main"), true, true);
+            delete[] cmd;
+            LeaveCriticalSection(&g_v8ThreadLock);
+        }
+        break;
+    case JSENGINE_EXIT:
+        if(isolate)
         {
-            HandleScope scope(isolate);
-            delete g_cloneObjectMethod;
-            g_cloneObjectMethod = nullptr;
-            isolate->GetCurrentContext()->Exit();
-        }
+            {
+                HandleScope scope(isolate);
+                delete g_cloneObjectMethod;
+                g_cloneObjectMethod = nullptr;
+                isolate->GetCurrentContext()->Exit();
+            }
 
-        isolate->Exit();
-        isolate->Dispose();
-        g_mainIsolate = nullptr;
-        if (abAlloc)
+            isolate->Exit();
+            isolate->Dispose();
+            g_mainIsolate = nullptr;
+            if (abAlloc)
+            {
+                delete abAlloc;
+                abAlloc = nullptr;
+            }
+
+            V8::Dispose();
+            V8::ShutdownPlatform();
+            delete g_platform;
+            DeleteCriticalSection(&g_v8ThreadLock);
+
+            if (!g_isIndependent)
+            {
+                UnhookWindowsHookEx(g_msgHook);
+            }
+            //FreeLibrary(g_hModule);
+        }
+        break;
+    case LUAENGINE_INIT:
+        if (!g_luaState)
         {
-            delete abAlloc;
-            abAlloc = nullptr;
+            g_luaState = lua_open();
+            if (!g_luaState)
+            {
+                DBGOUT(("ProcessEngineMsg: error open lua state!"));
+                break;
+            }
+            luaL_openlibs(g_luaState);
+            InitLuajit(g_luaState);
         }
-
-        V8::Dispose();
-        V8::ShutdownPlatform();
-        delete g_platform;
-        DeleteCriticalSection(&g_v8ThreadLock);
-
-        if (!g_isIndependent)
+        break;
+    case LUAENGINE_RUNCMD:
+        if (g_luaState)
         {
-            UnhookWindowsHookEx(g_msgHook);
+            auto scrW = (wchar_t*)msg->wParam;
+            if (!scrW)
+                break;
+
+            int len = WideCharToMultiByte(CP_UTF8, 0, scrW, -1, 0, 0, 0, 0);
+            if (len > 0)
+            {
+                auto scr = new char[len];
+                if (scr)
+                {
+                    WideCharToMultiByte(CP_UTF8, 0, scrW, -1, scr, len, 0, 0);
+                    ExecuteLuaString(g_luaState, scr);
+                    delete[] scr;
+                }
+            }
+            delete[] scrW;
         }
-        //FreeLibrary(g_hModule);
+        break;
+    case LUAENGINE_EXIT:
+        if (g_luaState)
+        {
+            lua_close(g_luaState);
+        }
+        break;
+    default:
+        break;
     }
+
 
 }
 DWORD WINAPI UIProc(LPARAM param)
@@ -250,7 +308,7 @@ bool AddParseString(shared_ptr<wchar_t>& text)
     return true;
 }
 
-void ReadCmdAndExecute(HWND hEdit)
+void ReadCmdAndExecute(HWND hEdit, int runCmdId)
 {
     auto itr = g_BufferSelector.find(hEdit);
     if (itr != g_BufferSelector.end())
@@ -306,8 +364,8 @@ void ReadCmdAndExecute(HWND hEdit)
         auto str = new wchar_t[wcslen(cmd.text.get()) + 1];
         wcscpy(str, cmd.text.get());
 
-        PostThreadMessage(g_hookWindowThreadId, JSENGINE_RUNCMD, (WPARAM)str, MAKE_JSENGINE_PARAM(str));
-        DBGOUT(("ReadCmdAndExecute: tid=%d", g_hookWindowThreadId));
+        PostThreadMessage(g_hookWindowThreadId, runCmdId, (WPARAM)str, MAKE_ENGINE_PARAM(str));
+        //DBGOUT(("ReadCmdAndExecute: tid=%d", g_hookWindowThreadId));
 
         SetWindowText(hEdit, L"");
     }
@@ -337,7 +395,26 @@ LRESULT WINAPI WndProc(
         switch (wParam & 0xffff)
         {
         case IDOK:
-            ReadCmdAndExecute(GetFocus());
+            if (g_CurScriptType == ScriptType::JavaScript)
+            {
+                ReadCmdAndExecute(GetFocus(), JSENGINE_RUNCMD);
+            }
+            else
+            {
+                ReadCmdAndExecute(GetFocus(), LUAENGINE_RUNCMD);
+            }
+            break;
+        case IDC_SWITCH:
+            if (g_CurScriptType == ScriptType::JavaScript)
+            {
+                g_CurScriptType = ScriptType::Lua;
+                SetDlgItemText(hwnd, IDC_SCRIPTTYPE, L"lua:");
+            }
+            else if (g_CurScriptType == ScriptType::Lua)
+            {
+                g_CurScriptType = ScriptType::JavaScript;
+                SetDlgItemText(hwnd, IDC_SCRIPTTYPE, L"js:");
+            }
             break;
         default:
             break;
@@ -348,8 +425,6 @@ LRESULT WINAPI WndProc(
         g_hOutputEdit = GetDlgItem(hwnd, IDC_OUTPUT);
         hInputEdit = GetDlgItem(hwnd, IDC_INPUT);
         hInputShortEdit = GetDlgItem(hwnd, IDC_INPUTCMD);
-        hCheck1 = GetDlgItem(hwnd, IDC_CHECKMEM1);
-        hCheck2 = GetDlgItem(hwnd, IDC_CHECKMEM2);
 
         g_BufferSelector[hInputEdit] = &g_CmdBuffer;
         g_BufferSelector[hInputShortEdit] = &g_ShortCmdBuffer;
@@ -358,8 +433,9 @@ LRESULT WINAPI WndProc(
         SetWindowLongPtr(hInputShortEdit, GWL_WNDPROC, (LONG)NewEditProc);
 
         CreateThread(0, 0, (LPTHREAD_START_ROUTINE)UIProc, 0, 0, &g_UIThreadId);
-        PostThreadMessage(g_hookWindowThreadId, JSENGINE_INIT, 0, MAKE_JSENGINE_PARAM(0));
-        DBGOUT(("WndProc: Init Completed. tid=%d", g_hookWindowThreadId));
+        PostThreadMessage(g_hookWindowThreadId, JSENGINE_INIT, 0, MAKE_ENGINE_PARAM(0));
+        PostThreadMessage(g_hookWindowThreadId, LUAENGINE_INIT, 0, MAKE_ENGINE_PARAM(0));
+        //DBGOUT(("WndProc: Init Completed. tid=%d", g_hookWindowThreadId));
         //commandThread = CreateThread(0, 0, (LPTHREAD_START_ROUTINE)CommandProc, 0, 0, &commandThreadId);
         //if (!commandThread)
         //{
@@ -373,7 +449,8 @@ LRESULT WINAPI WndProc(
         //exitCommand.text = shared_ptr<wchar_t>();
         //exitCommand.compFlag = 0;
         //CommandQueue.Enqueue(exitCommand);
-        PostThreadMessage(g_hookWindowThreadId, JSENGINE_EXIT, 0, MAKE_JSENGINE_PARAM(0));
+        PostThreadMessage(g_hookWindowThreadId, JSENGINE_EXIT, 0, MAKE_ENGINE_PARAM(0));
+        PostThreadMessage(g_hookWindowThreadId, LUAENGINE_EXIT, 0, MAKE_ENGINE_PARAM(0));
         PostThreadMessage(g_UIThreadId, UIPROC_EXIT, 0, 0);
         EndDialog(hwnd, 0);
         break;

@@ -37,6 +37,10 @@ enum JSEngineMessage
     JSENGINE_INIT=WM_USER+521,
     JSENGINE_RUNCMD,
     JSENGINE_EXIT,
+
+    LUAENGINE_INIT,
+    LUAENGINE_RUNCMD,
+    LUAENGINE_EXIT,
 };
 
 enum UIProcMessage
@@ -45,8 +49,14 @@ enum UIProcMessage
     UIPROC_ADD_STRING,
 };
 
+enum class ScriptType
+{
+    JavaScript,
+    Lua,
+};
+
 #define CHECK_JSENGINE_MSG(para1,para2) ((para1)==((para2)^0x15238958))
-#define MAKE_JSENGINE_PARAM(para1) ((DWORD)(para1)^0x15238958)
+#define MAKE_ENGINE_PARAM(para1) ((DWORD)(para1)^0x15238958)
 void LoadInitJsFiles(v8::Isolate* isolate);
 void ProcessEngineMsg(MSG* msg);
 
@@ -103,6 +113,43 @@ public:
 
         std::shared_ptr<wchar_t> msgPtr(msg, [](wchar_t*p){delete[] p; });
         OutputInfo(msgPtr);
+    }
+    static void OutputInfo(const char *format, ...)
+    {
+        if (!format || !state_)
+            return;
+
+        int maxLen = 0x1000;
+        auto msg = new char[maxLen];
+
+
+        va_list ap;
+        va_start(ap, format);
+        while (true)
+        {
+            auto cnt = _vsnprintf(msg, maxLen - 1, format, ap);
+            if (cnt == -1)
+            {
+                delete[] msg;
+                maxLen *= 2;
+                msg = new char[maxLen];
+            }
+            else
+                break;
+        }
+        va_end(ap);
+
+        int curlen = MultiByteToWideChar(CP_UTF8, 0, msg, -1, 0, 0);
+        if (curlen > 0)
+        {
+            auto buff = new wchar_t[curlen];
+            if (buff)
+            {
+                MultiByteToWideChar(CP_UTF8, 0, msg, -1, buff, curlen);
+                std::shared_ptr<wchar_t> msgPtr(buff, [](wchar_t*p) {delete[] p; });
+                OutputInfo(msgPtr);
+            }
+        }
     }
     static void ChangeOutputStream(DispState st)
     {

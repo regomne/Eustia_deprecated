@@ -257,7 +257,6 @@ static void CallFunction(const v8::FunctionCallbackInfo<v8::Value>& args)
             {
                 regFlags |= (1 << i);
                 *((DWORD*)&regs + (i + 1)) = regsObj->Get(ctx, i).ToLocalChecked()->Uint32Value(ctx).FromMaybe(0);
-                DBGOUT(("register has i: %d, value: %x", i, *((DWORD*)&regs + (i + 1))));
             }
         }
     }
