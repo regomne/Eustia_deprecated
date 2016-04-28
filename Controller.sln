@@ -1,11 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "worker", "worker\worker.vcxproj", "{6BC70B60-B1F7-4041-8857-C5F1872FEF53}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Controller", "Controller\Controller.vcxproj", "{7F094ADD-9151-4CD7-9915-BA4AC59E355E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ControllerCmd", "ControllerCmd\ControllerCmd.vcxproj", "{80A4653D-7359-40AF-BDF2-86B8FE0DB796}"
 EndProject
@@ -21,10 +19,6 @@ Global
 		{6BC70B60-B1F7-4041-8857-C5F1872FEF53}.Debug|Win32.Build.0 = Debug|Win32
 		{6BC70B60-B1F7-4041-8857-C5F1872FEF53}.Release|Win32.ActiveCfg = Release|Win32
 		{6BC70B60-B1F7-4041-8857-C5F1872FEF53}.Release|Win32.Build.0 = Release|Win32
-		{7F094ADD-9151-4CD7-9915-BA4AC59E355E}.Debug|Win32.ActiveCfg = Debug|Win32
-		{7F094ADD-9151-4CD7-9915-BA4AC59E355E}.Debug|Win32.Build.0 = Debug|Win32
-		{7F094ADD-9151-4CD7-9915-BA4AC59E355E}.Release|Win32.ActiveCfg = Release|Win32
-		{7F094ADD-9151-4CD7-9915-BA4AC59E355E}.Release|Win32.Build.0 = Release|Win32
 		{80A4653D-7359-40AF-BDF2-86B8FE0DB796}.Debug|Win32.ActiveCfg = Debug|Win32
 		{80A4653D-7359-40AF-BDF2-86B8FE0DB796}.Debug|Win32.Build.0 = Debug|Win32
 		{80A4653D-7359-40AF-BDF2-86B8FE0DB796}.Release|Win32.ActiveCfg = Release|Win32
