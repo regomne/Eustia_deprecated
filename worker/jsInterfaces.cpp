@@ -521,7 +521,7 @@ static void DeleteMem(const v8::FunctionCallbackInfo<v8::Value>& args)
     CHECK_ARGS_COUNT(1);
 
     auto ctx = isolate->GetCurrentContext();
-    auto mem = (wchar_t*)args[0]->Uint32Value(ctx).FromMaybe(0);
+    auto mem = (char*)args[0]->Uint32Value(ctx).FromMaybe(0);
     delete[] mem;
 }
 
