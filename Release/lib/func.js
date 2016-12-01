@@ -1,8 +1,6 @@
 /// @file
 /// @brief 函数式支持模块
 
-var exp={};
-
 /// 返回各参数函数的与函数
 /// @brief 返回各参数函数的与函数
 /// @return 返回的与函数
@@ -19,7 +17,6 @@ function and()
     return true;
   };
 }
-exp.and=and;
 
 /// 返回各参数函数的或函数
 /// @brief 返回各参数函数的或函数
@@ -37,7 +34,6 @@ function or()
     return false;
   };
 }
-exp.or=or;
 
 /// 返回参数函数的非函数
 /// @brief 返回参数函数的非函数
@@ -51,7 +47,6 @@ function not(f)
     return !result;
   };
 }
-exp.not=not;
 
 /// 针对数组中的每个元素应用指定函数，并返回新元素按原顺序组成的数组。\n
 /// 与ECMAScript5中的Array.prototype.map相同。
@@ -63,7 +58,6 @@ function map(a,f)
 {
   return a.map(f);
 }
-exp.map=map;
 
 /// 将原始数组按照归纳函数依次归纳成一个值
 /// @brief 将原始数组按照归纳函数依次归纳成一个值
@@ -76,7 +70,6 @@ function reduce(a,f,initial)
   if(arguments.length>2) return a.reduce(f,initial);
   else return a.reduce(f);
 }
-exp.reduce=reduce;
 
 /// 根据原始单元素函数，返回可对数组作用map函数的函数
 /// @brief 根据原始单元素函数，返回可对数组作用map函数的函数
@@ -89,7 +82,6 @@ function mapper(f)
     return map(a,f);
   };
 }
-exp.mapper=mapper;
 
 /// 生成一个组合两个函数的函数 根据f和g返回f(g())
 /// @brief 生成一个组合两个函数的函数
@@ -103,7 +95,6 @@ function compose(f,g)
     return f.call(this,g.apply(this,arguments));
   };
 }
-exp.compose=compose;
 
 /// 将一个类似数组对象转换为数组
 /// @brief 将一个类似数组对象转换为数组
@@ -114,7 +105,6 @@ function array(a,n)
 {
   return Array.prototype.slice.call(a, n||0);
 }
-exp.array=array;
 
 /// 返回一个不完全函数，将参数绑定的原始函数的左侧
 /// @brief 返回一个不完全函数，将参数绑定的原始函数的左侧
@@ -130,7 +120,6 @@ function bindL(f)
     return f.apply(this,a);
   };
 }
-exp.bindL=bindL;
 
 /// 返回一个不完全函数，将参数绑定的原始函数的右侧
 /// @brief 返回一个不完全函数，将参数绑定的原始函数的右侧
@@ -146,7 +135,6 @@ function bindR(f)
     return f.apply(this,a);
   };
 }
-exp.bindR=bindR;
 
 /// 返回一个不完全函数，将undefined参数进行模板替换，并将剩余参数绑定到右侧
 /// @brief 生成函数模板，将其中的undefined代替
@@ -168,7 +156,6 @@ function bind(f)
     return f.apply(this,a);
   }
 }
-exp.bind=bind;
 
 /// 返回一个带有记忆功能的函数，针对同样的参数(值类型）直接返回相同的结果。\n
 /// 主要用在复杂递归场景中，生成的函数有较高的空间复杂度。
@@ -186,6 +173,25 @@ function memorize(f)
       return cache[key]=f.apply(this,arguments);
   };
 }
-exp.memorize=memorize;
 
-module.exports=exp;
+function boolf(func)
+{
+  return (...arg)=>func(...arg)&0xff;
+}
+
+module.exports=
+{
+  boolf:boolf,
+  and:and,
+  or:or,
+  not:not,
+  map:map,
+  reduce:reduce,
+  mapper:mapper,
+  compose:compose,
+  array:array,
+  bind:bind,
+  bindL:bindL,
+  bindR:bindR,
+  memorize:memorize,
+};

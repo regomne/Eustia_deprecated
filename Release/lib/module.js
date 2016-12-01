@@ -1,6 +1,6 @@
 ﻿
 
-(function(){
+(function(rootObj){
 
 var path={
   dirname: function(str)
@@ -62,7 +62,7 @@ Module._getFilename=function(req,par)
   if(req.slice(-3).toLowerCase()!='.js')
     req+='.js';
 
-  if(root.FastRequire && Module._nameCache[req.toLowerCase()])
+  if(rootObj.FastRequire && Module._nameCache[req.toLowerCase()])
   {
     return Module._nameCache[req.toLowerCase()];
   }
@@ -175,7 +175,7 @@ Module.prototype._compile = function(content, filename) {
     sandbox.__dirname = dirname;
     sandbox.module = self;
     sandbox.global = sandbox;
-    sandbox.root = root;
+    sandbox.root = rootObj;
 
     _ImportJS(sandbox, content, filename);
   }
@@ -190,15 +190,15 @@ function loadJSModule(module, filename) {
 var rootModule=new Module('.',null);
 rootModule.filename=_DllPath+'!root';
 
-root.module=rootModule;
-root.exports=rootModule.exports;
-root.__filename=_DllPath+'init.js';
-root.__dirname=_DllPath;
+rootObj.module=rootModule;
+rootObj.exports=rootModule.exports;
+rootObj.__filename=_DllPath+'init.js';
+rootObj.__dirname=_DllPath;
 
 
-root.require=function(name,forceReload)
+rootObj.require=function(name,forceReload)
 {
   return Module._load(name,rootModule,forceReload);
 }
 
-})();
+})(global);

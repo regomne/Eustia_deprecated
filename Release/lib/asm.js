@@ -167,7 +167,7 @@ var Hooker=(function(){
 	{
 		for(var i=1;i<hookList.length;i++)
 		{
-			if(hookList[i].addr==addr)
+			if(hookList[i]!=undefined && hookList[i].addr==addr)
 			{
 				delete hookList[i];
 				return;

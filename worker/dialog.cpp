@@ -130,7 +130,12 @@ void ProcessEngineMsg(MSG* msg)
                 HandleScope scope(isolate);
                 delete g_cloneObjectMethod;
                 g_cloneObjectMethod = nullptr;
-                isolate->GetCurrentContext()->Exit();
+                while (true)
+                {
+                    auto ctx = isolate->GetEnteredContext();
+                    if (ctx.IsEmpty()) break;
+                    else ctx->Exit();
+                }
             }
 
             isolate->Exit();

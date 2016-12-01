@@ -68,6 +68,7 @@ int WINAPI WndProc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPAR
         }
         break;
     case WM_INITDIALOG:
+        CheckDlgButton(hwnd, IDC_CHECK1, BST_CHECKED);
         if (!HookThread(0))
         {
             SendMessage(hwnd, WM_CLOSE, 0, 0);
@@ -79,6 +80,12 @@ int WINAPI WndProc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPAR
             {
                 MessageBox(hwnd, L"Can't create file mapping!", 0, 0);
                 SendMessage(hwnd, WM_CLOSE, 0, 0);
+            }
+            BYTE* ptr = (BYTE*)MapViewOfFile(g_hGlobalShareFile, FILE_MAP_WRITE, 0, 0, 1);
+            if (ptr)
+            {
+                *ptr = 1;
+                UnmapViewOfFile(ptr);
             }
         }
         break;
